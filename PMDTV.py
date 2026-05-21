@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 PMDTV.py — Phiếu hỏi điều tra thu nhập năm 2026 (Streamlit + Google Sheets).
-Phân quyền: ADMIN | ĐTV (sheet Account + DanhSachHo).
 """
-
 from __future__ import annotations
 
 import io
@@ -14,32 +12,30 @@ from contextlib import contextmanager
 from pathlib import Path
 from datetime import datetime
 from typing import Any
-
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+import gspread
+from google.oauth2.service_account import Credentials
 
-# Ẩn main-header trong sidebar để tránh trùng lặp
-st.markdown("""
-<style>
-    .main-header {
-        display: none !important;
-    }`
-</style>
-""", unsafe_allow_html=True)
+# --- 1. CẤU HÌNH KẾT NỐI (DÙNG SECRETS) ---
+_GSHEETS_SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+]
 
-try:
-    from streamlit_geolocation import streamlit_geolocation
-except ImportError:
-    streamlit_geolocation = None
+@st.cache_resource
+def _gspread_client():
+    # Đọc trực tiếp từ "két sắt" của Streamlit
+    json_key = json.loads(st.secrets["gcp_service_account"]["json"])
+    creds = Credentials.from_service_account_info(json_key, scopes=_GSHEETS_SCOPES)
+    return gspread.authorize(creds)
 
-try:
-    from geopy.distance import geodesic
-    from geopy.geocoders import Nominatim
-except ImportError:
-    geodesic = None
-    Nominatim = None
+def _open_spreadsheet():
+    gc = _gspread_client()
+    url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+    return gc.open_by_url(url)
 
 # ---------------------------------------------------------------------------
 # Cấu hình trang & giao diện
