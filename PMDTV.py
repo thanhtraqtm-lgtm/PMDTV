@@ -701,47 +701,42 @@ def _load_credentials_json() -> tuple[Path, dict]:
 
 
 @st.cache_resource
+@st.cache_resource
 def _gspread_client():
     import gspread
     from google.oauth2.service_account import Credentials
+    import json
 
-    cred_path = _credentials_json_path()
-    creds = Credentials.from_service_account_file(str(cred_path), scopes=_GSHEETS_SCOPES)
+    # Đọc trực tiếp nội dung JSON từ "két sắt" Secrets
+    json_key = json.loads(st.secrets["gcp_service_account"]["json"])
+    
+    # Kết nối
+    creds = Credentials.from_service_account_info(json_key, scopes=_GSHEETS_SCOPES)
     return gspread.authorize(creds)
 
-
 def _open_spreadsheet():
+    # Gọi hàm kết nối đã sửa ở trên
     gc = _gspread_client()
-    return gc.open_by_url(_spreadsheet_url())
-
+    # Lấy URL từ Secrets
+    url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+    return gc.open_by_url(url)
 
 def hien_thi_thong_tin_ket_noi_gsheets(*, truoc_khi_ghi: bool = False) -> bool:
-    """
-    In ra email + link đang dùng để người dùng đối chiếu với file đã chia sẻ quyền.
-    Trả về False nếu JSON sai email hoặc không mở được spreadsheet.
-    """
+    """In ra email và link đang dùng để kiểm tra cấu hình."""
     try:
-        cred_path, _ = _load_credentials_json()
-        email = _service_account_email()
-        url = _spreadsheet_url()
-    except ValueError as e:
-        st.error(str(e))
-        return False
+        import json
+        json_key = json.loads(st.secrets["gcp_service_account"]["json"])
+        email = json_key.get("client_email", "Không xác định")
+        url = st.secrets["connections"]["gsheets"]["spreadsheet"]
     except Exception as e:
-        st.error(f"Không đọc được cấu hình Google Sheets: {e}")
+        st.error(f"Lỗi đọc cấu hình từ Secrets: {e}")
         return False
 
-    st.info(
-        f"Đang dùng tài khoản **{email}** để ghi vào file [{url}]({url})"
-    )
-    st.caption(f"File JSON: `{cred_path}`")
+    st.info(f"Đang dùng tài khoản **{email}** để ghi vào file [Google Sheets]({url})")
 
-    if email != EXPECTED_SERVICE_EMAIL:
-        st.error(
-            f"Sai file JSON — email trong file là `{email}`, "
-            f"cần đúng `{EXPECTED_SERVICE_EMAIL}`. "
-            f"Sửa `credentials_file` trong `.streamlit/secrets.toml`."
-        )
+    # Kiểm tra email khớp hay không
+    if "EXPECTED_SERVICE_EMAIL" in globals() and email != EXPECTED_SERVICE_EMAIL:
+        st.error(f"Sai tài khoản! Email là `{email}`, cần đúng `{EXPECTED_SERVICE_EMAIL}`.")
         return False
 
     if not truoc_khi_ghi:
@@ -749,21 +744,10 @@ def hien_thi_thong_tin_ket_noi_gsheets(*, truoc_khi_ghi: bool = False) -> bool:
 
     try:
         sh = _open_spreadsheet()
-        if sh.title.strip().lower() != EXPECTED_SPREADSHEET_TITLE.lower():
-            st.warning(
-                f"Tên file Google Sheets đang mở là **«{sh.title}»**, "
-                f"không khớp **«{EXPECTED_SPREADSHEET_TITLE}»**. "
-                f"Có thể link trong `gsheets_url.txt` / `secrets.toml` trỏ nhầm file. "
-                f"Hãy copy link từ thanh địa chỉ khi mở đúng file Dieutrathunhaptest."
-            )
-        else:
-            st.success(f"Đã mở đúng file Google Sheets: **{sh.title}**")
+        st.success(f"Đã mở đúng file: **{sh.title}**")
         return True
-    except PermissionError as e:
-        st.error(_gsheets_error_message(e, sheet_name=SHEET_DANH_SACH_HO, action="mở file"))
-        return False
     except Exception as e:
-        st.error(_gsheets_error_message(e, sheet_name=SHEET_DANH_SACH_HO, action="mở file"))
+        st.error(f"Lỗi khi mở file: {e}")
         return False
 
 
