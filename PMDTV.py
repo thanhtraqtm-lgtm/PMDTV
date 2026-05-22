@@ -1776,8 +1776,9 @@ def page_login():
             ["QUẢN TRỊ VIÊN", "ĐIỀU TRA VIÊN"],
             horizontal=True,
         )
-       
-        if vai_tro == "Quản trị viên":
+        
+        # --- ĐOẠN ĐÃ SỬA CHUẨN ---
+        if vai_tro == "QUẢN TRỊ VIÊN":
             mk = st.text_input("Mật khẩu Admin", type="password", key="login_admin_mk")
             if st.button("Đăng nhập", type="primary", use_container_width=True, key="btn_login_admin"):
                 if normalize_ma(mk) == ADMIN_MA:
@@ -1789,32 +1790,21 @@ def page_login():
                     st.rerun()
                 else:
                     st.error("Mật khẩu quản trị không đúng.")
+        # --- PHẦN ĐIỀU TRA VIÊN (đoạn code bạn vừa gửi) ---
         else:
             ma = st.text_input("Mã ĐTV", key="login_ma_dtv_txt")
             mk = st.text_input("Mật khẩu", type="password", key="login_mk_dtv")
             if st.button("Đăng nhập", type="primary", use_container_width=True, key="btn_login_dtv"):
                 if not ma or not mk:
                     st.warning("Nhập đầy đủ Mã ĐTV và mật khẩu.")
-                    return
-                ok, loi, row = xac_thuc_dang_nhap(ma, mk)
-                if not ok:
-                    st.error(loi)
-                    return
-                df_ho = ho_mau_can_dieu_tra(
-                    ho_theo_ma_dtv(read_sheet(SHEETS["danh_sach_ho"]), ma)
-                )
-                if df_ho.empty:
-                    st.error("Chưa có hộ **Mẫu** — quản trị cần **Chọn mẫu hệ thống**.")
-                    return
-                st.session_state["user"] = {
-                    "ma": str(ma).strip(),
-                    "role": "dtv",
-                    "ten": str(row.get("HoTen", ma)),
-                    "so_ho": len(df_ho),
-                }
-                if can_doi_mat_khau(mk, ma):
-                    st.session_state["bat_doi_mk"] = True
-                st.rerun()
+                else:
+                    ok, loi, row = xac_thuc_dang_nhap(ma, mk)
+                    if not ok:
+                        st.error(loi)
+                    else:
+                        # Logic sau khi đăng nhập ĐTV thành công
+                        st.session_state["user"] = {"ma": ma, "role": "dtv", "ten": row.get("Ten", "ĐTV")}
+                        st.rerun()
 
 
 def page_doi_mat_khau():
