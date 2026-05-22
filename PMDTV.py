@@ -1333,15 +1333,30 @@ def nhap_lieu_5_nhom(ho_so: str, form_ver: int) -> None:
 
     for nhom in NHOM_NHAP:
         with card_container(nhom["ten"]):
-            # Chỉ hỏi Có/Không cho các nhóm kinh tế, không hỏi cho nhóm thành viên
-            if nhom["id"] != "thanh_vien":
-                co_hd = hoi_co_hoat_dong(nhom, ho_so, form_ver)
+            # --- PHẦN HỎI CÓ/KHÔNG ---
+            if nhom["id"] == "thanh_vien":
+                st.write("Nhập thông tin nhân khẩu hộ:")
+            else:
+                # Tùy chỉnh câu hỏi cho từng loại nhóm
+                if nhom["id"] == "luong":
+                    cau_hoi = "Trong 12 tháng qua, hộ ông/bà có ai đi làm để nhận tiền lương, tiền công không?"
+                else:
+                    cau_hoi = f"Hộ có hoạt động {nhom['ten']} không?"
+                
+                co_hd = st.radio(
+                    cau_hoi, 
+                    ["Có", "Không"], 
+                    horizontal=True, 
+                    key=_key_hoat_dong(nhom["id"], ho_so, form_ver)
+                ) == "Có"
+                
                 if not co_hd:
+                    # Logic khi chọn Không
                     if nhom["loai"] == "don":
                         _dat_zero_nhom_don(nhom["ma"], ho_so, form_ver)
                     elif nhom["loai"] == "nlt":
                         _dat_zero_nhom_nlt(ho_so, form_ver)
-                    st.caption("Đã ghi **0** — chuyển sang nhóm kế tiếp.")
+                    st.caption("Đã ghi **0**.")
                     continue
             
             # Hiển thị phần nhập liệu tương ứng
