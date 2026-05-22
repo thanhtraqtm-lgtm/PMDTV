@@ -1897,8 +1897,26 @@ def _bang_tong_hop_thu_nhap(df_kq_xa: pd.DataFrame) -> pd.DataFrame:
 
 
 def render_admin_dashboard() -> None:
-    # Ép giao diện lên trên cùng
-    st.markdown("""<style>.block-container { padding-top: 0rem !important; }</style>""", unsafe_allow_html=True)
+    # --- CSS CĂN GIỮA MỌI THỨ ---
+    st.markdown("""
+        <style>
+            /* Căn giữa tiêu đề và các khối */
+            .main .block-container {
+                max-width: 80%; /* Giới hạn độ rộng để không bị trải dài quá mức */
+                margin: 0 auto; /* Tự động căn giữa */
+            }
+            /* Căn giữa chữ */
+            h2, h3, .stMetric {
+                text-align: center;
+            }
+            /* Căn giữa cột */
+            [data-testid="column"] {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
     # Dán link Banner vào đây
     st.image("https://img.tripi.vn/cdn-cgi/image/width=700,height=700/https://gcs.tripi.vn/public-tripi/tripi-feed/img/478997wRW/anh-mo-ta.png", use_container_width=True)
@@ -2486,7 +2504,7 @@ def main():
     # 3. Sau khi đăng nhập, các lệnh dưới đây mới chạy
     user = st.session_state["user"]
     st.sidebar.markdown(
-        f'<div class="main-header"><b>PMDTV</b><br><small>{user["ma"]}</small></div>',
+        f'<div class="main-header"><b>MENU ĐIỀU KHIỂN</b><br><small>{user["ma"]}</small></div>',
         unsafe_allow_html=True,
     )
 
