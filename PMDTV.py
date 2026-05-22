@@ -1901,7 +1901,7 @@ def render_admin_dashboard() -> None:
     st.markdown("""<style>.block-container { padding-top: 0rem !important; }</style>""", unsafe_allow_html=True)
 
     # Dán link Banner vào đây
-    st.image("https://images.unsplash.com/photo-1523348837708-15d4a09cfacb?q=80&w=2070", use_container_width=True)
+    st.image("https://img.tripi.vn/cdn-cgi/image/width=700,height=700/https://gcs.tripi.vn/public-tripi/tripi-feed/img/478997wRW/anh-mo-ta.png", use_container_width=True)
 
     # Bố cục logo và tiêu đề
     col1, col2 = st.columns([1, 12])
