@@ -681,10 +681,17 @@ def _open_spreadsheet():
     return _gspread_client().open_by_url(st.secrets["connections"]["gsheets"]["spreadsheet"])
 
 def _service_account_email() -> str:
-    # Lấy email từ chính cái JSON trong Secrets
-    json_key = json.loads(st.secrets["gcp_service_account"]["json"])
+    """Lấy email an toàn từ JSON trong Secrets."""
+    json_data = st.secrets["gcp_service_account"]["json"]
+    
+    # Nếu là chuỗi, ta chuyển thành dict
+    if isinstance(json_data, str):
+        json_key = json.loads(json_data)
+    # Nếu đã là dict (do Streamlit tự parse), ta dùng trực tiếp
+    else:
+        json_key = json_data
+        
     return str(json_key.get("client_email", "")).strip()
-
 
 @st.cache_resource
 @st.cache_resource
@@ -860,8 +867,7 @@ def update_sheet(
 
 def _kiem_tra_ket_noi_gsheets() -> bool:
     """Kiểm tra JSON + quyền mở spreadsheet (không hiện đường dẫn file kỹ thuật)."""
-    try:
-        cred_path, _ = _load_credentials_json()
+    try:      
         email = _service_account_email()
         if email != EXPECTED_SERVICE_EMAIL:
             st.error(
