@@ -2075,12 +2075,10 @@ def admin_he_thong():
     tab1, tab2 = st.tabs(["📤 Tải lên danh sách hộ", "🎯 Chọn mẫu hệ thống"])
 
     with tab1:
+        st.write("### 📤 Tải lên danh sách hộ")
         st.caption(
-            f"Tệp Excel cần có: **{ten_vi['Huyen']}**, **{ten_vi['Xa']}**, **{ten_vi['DiaBan']}**, "
-        f"**{ten_vi['HoSo']}**, **{ten_vi['TenChuHo']}**, **{ten_vi['MaDTV']}** "
-        "(có dấu hoặc không dấu đều được). Hệ thống tự lọc **10 {ten_vi['MaDTV']} đầu tiên**, "
-        "mỗi mã **100 hộ nền đầu tiên** (tối đa **1.000 hộ**). "
-        "Sau đó sang tab **Chọn mẫu** để đánh dấu **40 hộ mẫu** / 60 hộ dự phòng."
+            "Tải lên tệp Excel chứa danh sách hộ điều tra. "
+            "Hệ thống sẽ nạp toàn bộ danh sách để bạn chọn mẫu trên mọi ĐTV và mọi hộ nền."
         )
         f = st.file_uploader("Chọn tệp Excel (.xlsx, .xls)", type=["xlsx", "xls"], key="upload_ho_excel")
         if f and st.button("Tải lên", type="primary", use_container_width=True):
@@ -2141,94 +2139,32 @@ def admin_he_thong():
                 st.toast("Không ghi được dữ liệu. Kiểm tra kết nối.", icon="⚠️")
 
     with tab2:
-            st.caption(
-                f"Hệ thống đang xử lý **toàn bộ hộ** của mỗi {ten_vi['MaDTV']} đã nạp. "
-                "Bạn có thể thực hiện chọn mẫu tự động trên tổng số lượng hộ hiện có."
-            )
-            
-            df_ho = read_sheet(SHEETS["danh_sach_ho"])
-            if df_ho.empty:
-                st.warning("Chưa có danh sách hộ. Vui lòng tải lên Excel ở tab «Tải lên danh sách hộ».")
-                return
+        st.caption("Bạn có thể thực hiện chọn mẫu tự động trên toàn bộ số hộ đã nạp.")
+        df_ho = read_sheet(SHEETS["danh_sach_ho"])
+        if df_ho.empty or "MaDTV" not in df_ho.columns:
+            st.warning("Chưa có danh sách hộ hoặc thiếu cột Mã ĐTV.")
+            return
 
-            if "MaDTV" not in df_ho.columns:
-                st.warning("Danh sách hộ chưa có cột Mã ĐTV. Vui lòng tải lên lại file Excel.")
-                return
-            
-            dtv_list = danh_sach_ma_dtv_theo_thu_tu(df_ho["MaDTV"])
-            if not dtv_list:
-                st.warning("Không có Mã ĐTV trong danh sách đã nạp.")
-                return
-
-            # PHẦN CHỌN MẪU ĐÃ ĐƯỢC MỞ KHÓA:
-            # Thay vì dùng df_ho.groupby("MaDTV").head(SO_HO_NEN), 
-            # chúng ta lấy toàn bộ dữ liệu để tính toán
-            df_chon_mau = df_ho.copy()
-            
-            st.success(f"Đã nạp thành công toàn bộ **{len(df_chon_mau)}** hộ để chọn mẫu.")
-
-        # Lấy tổng số hộ của ĐTV hiện tại để làm căn cứ tính toán
+        dtv_list = danh_sach_ma_dtv_theo_thu_tu(df_ho["MaDTV"])
+        ma_dtv = st.selectbox("Chọn ĐTV", dtv_list)
         df_nen = lay_danh_sach_nen(df_ho, ma_dtv)
         tong_so_ho = len(df_nen)
         
         c1, c2, c3 = st.columns(3)
-        with c1:
-            ma_dtv = st.selectbox(ten_vi["MaDTV"], dtv_list)
-        with c2:
-            # Bước nhảy k vẫn giữ nguyên
-            k = st.number_input("k (bước nhảy)", min_value=1, value=2, step=1)
-        with c3:
-            # r (vị trí bắt đầu) không nên để max là 100 nữa, mà là tổng số hộ
-            r = st.number_input(
-                "r (vị trí bắt đầu)", 
-                min_value=1, 
-                max_value=max(1, tong_so_ho), 
-                value=1, 
-                step=1
-            )
-
-        st.caption(f"Mã ĐTV **{ma_dtv}**: có tổng cộng **{tong_so_ho}** hộ nền.")
-
-        if st.button("Chạy chọn mẫu và ghi Google Sheets", type="primary"):
-            # Thay vì yêu cầu cứng nhắc 40 hộ, hãy để tùy bạn chọn 
-            # hoặc ít nhất là 1 hộ để không bị chặn
+        k = c1.number_input("k (bước nhảy)", 1, 100, 2)
+        r = c2.number_input("r (vị trí bắt đầu)", 1, max(1, tong_so_ho), 1)
+        
+        if c3.button("Chạy chọn mẫu", type="primary"):
             if tong_so_ho < 1:
-                st.warning("Không có hộ nào để chọn mẫu.")
-                return
-            
-            # Ở đây bạn gọi hàm chọn mẫu của bạn
-            # Đảm bảo hàm 'thuc_hien_chon_mau' không chứa biến SO_HO_NEN bên trong
-            # Bạn hãy sửa hàm đó để nhận vào 'tong_so_ho' thay vì hằng số cũ
-            result = thuc_hien_chon_mau(df_nen, k, r) 
-            st.success("Đã chọn mẫu xong trên toàn bộ dữ liệu!")
-
-            # 1. Thực hiện chọn mẫu trên toàn bộ dữ liệu
-            df_da_chon = ap_dung_chon_mau_cho_dtv(df_ho, ma_dtv, int(k), int(r))
-            
-            # 2. Tính toán số lượng để kiểm soát
-            so_mau = int((df_da_chon[COL_PHAN_LOAI] == PHAN_LOAI_MAU).sum())
-            so_nen = int((df_da_chon[COL_PHAN_LOAI] == PHAN_LOAI_NEN).sum())
-            tong_da_xu_ly = len(df_da_chon)
-
-            # 3. Cập nhật vào Sheets
-            df_out = cap_nhat_danh_sach_ho_theo_dtv(df_ho, ma_dtv, df_da_chon)
-            
-            if write_sheet_replace(SHEETS["danh_sach_ho"], df_out):
-                # 4. CHÈN THÊM: Kiểm tra tính toàn vẹn của dữ liệu trước khi báo cáo
-                if tong_da_xu_ly != (so_mau + so_nen):
-                    st.warning(f"⚠️ Cảnh báo: Tổng số hộ ({tong_da_xu_ly}) không khớp với số đã phân loại ({so_mau + so_nen}).")
-                
-                # 5. Toast thông báo thành công
-                st.toast(
-                    f"Đã chọn mẫu {ma_dtv}: {so_mau} Mẫu, {so_nen} Dự phòng.",
-                    icon="✅",
-                )
-                
-                # 6. Hiển thị bảng để "nhìn vào" và kiểm tra thực tế
-                st.info(f"Tổng cộng đã xử lý: **{tong_da_xu_ly}** hộ.")
-                hien_bang_ngang(df_da_chon)
+                st.warning("Không có hộ nào.")
             else:
-                st.error("Lỗi: Không ghi được dữ liệu vào Google Sheets.")
+                df_da_chon = ap_dung_chon_mau_cho_dtv(df_ho, ma_dtv, int(k), int(r))
+                df_out = cap_nhat_danh_sach_ho_theo_dtv(df_ho, ma_dtv, df_da_chon)
+                if write_sheet_replace(SHEETS["danh_sach_ho"], df_out):
+                    st.success("Đã chọn mẫu xong!")
+                    hien_bang_ngang(df_da_chon)
+                else:
+                    st.error("Lỗi ghi Google Sheets.")
 
 def admin_tien_do():
     render_header("📊 Tiến độ hoàn thành")
