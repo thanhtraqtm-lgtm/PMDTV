@@ -70,26 +70,31 @@ def render_header(title=""):
         is_admin = user.get("role") == 'admin'
         
         # Vẽ banner và CSS - CHỈ CHẠY LẦN ĐẦU TIÊN
-        st.markdown(f"""
-        <style>
-            .header-main {{ background-color: #0d2137; padding: 15px; border-radius: 8px; }}
-            .header-title {{ font-weight:bold; font-size: 1.1em; color: white; text-align: center; }}
-            .banner-nongthon {{ width: 100%; height: auto; border-radius: 8px; margin-bottom: 10px; }}
-            .subtitle-bar {{ background-color: #f0f2f6; padding: 10px; font-weight: bold; margin-top: 10px; }}
-        </style>
-        <div class="header-main">
-            <img src="https://www.gso.gov.vn/wp-content/uploads/logo-gso.png" class="banner-nongthon">
-            <div class="header-title">PHẦN MỀM ĐIỀU TRA THU NHẬP</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        if is_admin:
-            st.markdown("""
-                <img src="https://images.unsplash.com/photo-1523348837708-15d4a09cfacb?auto=format&fit=crop&q=80&w=600&h=150" class="banner-nongthon">
-            """, unsafe_allow_html=True)
-            
-        # Đánh dấu đã vẽ xong banner
-        st.session_state.header_rendered = True
+st.markdown(f"""
+    <style>
+        .header-main {{ 
+            background-color: #0d2137; 
+            padding: 20px; 
+            border-radius: 10px; 
+            text-align: center;
+            margin-bottom: 10px;
+        }}
+        .logo-img {{ width: 80px; height: auto; margin-bottom: 10px; }}
+        .header-title {{ font-weight:bold; font-size: 1.5em; color: white; }}
+        .banner-nongthon {{ width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-top: 10px; }}
+    </style>
+    <div class="header-main">
+        <img src="https://www.gso.gov.vn/wp-content/uploads/logo-gso.png" class="logo-img">
+        <div class="header-title">PHẦN MỀM ĐIỀU TRA THU NHẬP</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+if is_admin:
+    st.markdown("""
+        <img src="https://images.unsplash.com/photo-1523348837708-15d4a09cfacb?auto=format&fit=crop&q=80&w=2070&h=300" class="banner-nongthon">
+    """, unsafe_allow_html=True)
+    
+st.session_state.header_rendered = True
 
     # TIÊU ĐỀ TRANG: Luôn hiện mỗi khi gọi hàm để biết đang ở trang nào
     st.markdown(f'<div class="subtitle-bar">{title}</div>', unsafe_allow_html=True)
