@@ -2407,40 +2407,38 @@ def dtv_nhap_phieu():
                     hien_loi_validation(msg)
 
         st.markdown("---")
-        if st.button(
-            "💾 Lưu phiếu",
-            type="primary",
-            use_container_width=True,
-            key=f"luu_{ho_so}_{form_ver}",
-            disabled=not hop_le,
-        ):
-            # --- PHẦN 1: KIỂM TRA (CHỈ CẢNH BÁO, KHÔNG DỪNG) ---
-            if geodesic is None:
-                st.warning("Thiếu thư viện geopy.", icon="⚠️")
-                # Không return ở đây
-
+        if st.button("💾 Lưu phiếu", type="primary", use_container_width=True, key=f"luu_{ho_so}_{form_ver}", disabled=not hop_le):
+            # 1. Kiểm tra vị trí - KHÔNG CHẶN, CHỈ CẢNH BÁO
             gps = phan_tich_vi_tri_gps(loc)
             if gps and gps.get("canh_bao_dtv"):
                 st.warning(f"⚠️ {gps['canh_bao_dtv']}", icon="⚠️")
                 gps["GhiChuAdmin"] = f"Cảnh báo: {gps['canh_bao_dtv']}"
+            else:
+                gps["GhiChuAdmin"] = "Hợp lệ"
 
             geo = phan_tich_geofence(ho, loc)
-            # Không return ở đây kể cả khi lệch geofence
+            # Không dùng return ở đây
 
-            # --- PHẦN 2: LƯU PHIẾU (LUÔN CHẠY) ---
+            # 2. Tạo dòng dữ liệu (đảm bảo đúng tham số hàm của bạn)
             row = tao_dong_ket_qua_qd1099(
                 ma_dtv=ma, 
                 ho=ho, 
                 nhan_khau=nk,
-                # ... (giữ nguyên các tham số cũ của bạn) ...
-                gps=gps,
-                geo=geo
+                thu_luong=du_lieu_form["thu_luong"], 
+                linh_vuc=du_lieu_form["linh_vuc"], 
+                dt_sxkd=du_lieu_form["dt_sxkd"], 
+                cp_sxkd=du_lieu_form["cp_sxkd"], 
+                thu_khac=du_lieu_form["thu_khac"], 
+                loc=loc, 
+                gps=gps, 
+                geo=geo,
+                ghi_chu_vi_tri=str(st.session_state.get(f"gc_vitri_{ho_so}_{form_ver}", ""))
             )
             
-            # --- PHẦN 3: KẾT QUẢ ---
+            # 3. Lưu vào Google Sheets
             if append_ket_qua(row, silent=True):
                 st.toast("Đã lưu phiếu thành công.", icon="✅")
-                st.rerun() # Dòng này sẽ làm mới lại form cho ĐTV
+                st.rerun()
             else:
                 st.toast("Không lưu được phiếu.", icon="⚠️")
 
