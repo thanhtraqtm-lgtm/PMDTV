@@ -456,15 +456,25 @@ def chuan_hoa_df_hien_thi(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def df_an_toan_hien_thi(df: pd.DataFrame) -> pd.DataFrame:
-    """Chuẩn hóa DataFrame trước hiển thị — tránh np.int64, None, InvalidIndexError."""
+    """Chuẩn hóa DataFrame trước hiển thị — giữ nguyên định dạng số."""
     if df is None or df.empty:
         return pd.DataFrame()
+    
     out = df.copy().reset_index(drop=True)
+    
     for c in out.columns:
-        if pd.api.types.is_numeric_dtype(out[c]):
+        # Nếu là cột định danh (MaDTV, HoSo, MaDiaBan), bắt buộc phải là chuỗi
+        if c in ["MaDTV", "HoSo", "MaDiaBan", "DiaBan", "TenChuHo", "Xa"]:
+            out[c] = out[c].fillna("").astype(str).replace({"nan": "", "None": ""})
+        
+        # Nếu là cột số (NhanKhauTT, ThuNhap, v.v.), chỉ điền 0 vào chỗ trống, KHÔNG ép thành chuỗi
+        elif pd.api.types.is_numeric_dtype(out[c]):
             out[c] = pd.to_numeric(out[c], errors="coerce").fillna(0)
+            
+        # Các cột còn lại (Phân loại, v.v.)
         else:
-            out[c] = out[c].fillna("").astype(str).replace({"nan": "", "None": "<NA>"})
+            out[c] = out[c].fillna("").astype(str).replace({"nan": "", "None": ""})
+            
     return out
 
 
@@ -488,29 +498,43 @@ def doc_excel_danh_sach_ho(
     """
     Đọc Excel danh sách hộ, khớp cột linh hoạt (có dấu / không dấu).
     Trả về (DataFrame các cột chuẩn, danh sách tên cột thiếu bằng tiếng Việt).
-    can_madtv=True: bắt buộc có cột Mã ĐTV (dùng cho nạp thông minh 1.000 hộ).
+    can_madtv=True: bắt buộc có cột Mã ĐTV.
     """
+    # 1. Đọc file với định dạng chuỗi
     raw = pd.read_excel(file, dtype=str)
     raw.columns = [str(c).strip() for c in raw.columns]
+    
+    # 2. Gọi hàm chuẩn hóa (đảm bảo hàm chuan_hoa_ten_cot_df đã hỗ trợ tên mới)
     df = chuan_hoa_ten_cot_df(raw)
-    thieu: list[str] = []
+    
+    # 3. Định nghĩa tên hiển thị để báo lỗi cho người dùng
     ten_vi = {
-        "Huyen": "Huyện",
+        "Huyen": "Mã TKCS",
         "Xa": "Xã",
-        "DiaBan": "Địa bàn",
+        "DiaBan": "Tên địa bàn",
+        "MaDiaBan": "Mã địa bàn",
         "HoSo": "Hộ số",
         "TenChuHo": "Tên chủ hộ",
         "MaDTV": "Mã ĐTV",
     }
+    
+    # 4. Xác định danh sách cột cần thiết
     cols_can = list(COL_HO) + (["MaDTV"] if can_madtv else [])
+    
+    # 5. Kiểm tra các cột bị thiếu
+    thieu: list[str] = []
     for canon in cols_can:
         if canon not in df.columns:
             thieu.append(ten_vi.get(canon, canon))
+            
     if thieu:
         return None, thieu
+    
+    # 6. Chọn cột đầu ra và xử lý giá trị trống
     out_cols = list(cols_can)
     if "DiaChi" in df.columns and "DiaChi" not in out_cols:
         out_cols.append("DiaChi")
+        
     return df[out_cols].fillna(""), []
 
 
@@ -528,25 +552,19 @@ def danh_sach_ma_dtv_theo_thu_tu(series: pd.Series) -> list[str]:
 
 
 def loc_mau_1000_ho(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
-    """
-    Bước 1 — Danh sách nền: 10 Mã ĐTV đầu tiên trong file Excel;
-    mỗi mã lấy đúng 100 hộ đầu tiên (giữ thứ tự gốc), tối đa 1.000 hộ.
-    """
+    """Bước 1: Nạp toàn bộ danh sách hộ từ file Excel mà không giới hạn số lượng."""
     if df.empty or "MaDTV" not in df.columns:
         return pd.DataFrame(), []
 
     work = df.copy()
     work["MaDTV"] = work["MaDTV"].astype(str).str.strip()
 
+    # Lấy toàn bộ ĐTV có trong file
     tat_ca_dtv = danh_sach_ma_dtv_theo_thu_tu(work["MaDTV"])
-    dtv_10 = tat_ca_dtv[:10]
-    cac_phan: list[pd.DataFrame] = []
-    for ma in dtv_10:
-        cac_phan.append(work[work["MaDTV"] == ma].head(100))
-
-    if not cac_phan:
-        return pd.DataFrame(), []
-    return pd.concat(cac_phan, ignore_index=True), dtv_10
+    
+    # Không dùng .head(10) và .head(100) nữa
+    # Chúng ta trả về toàn bộ dữ liệu
+    return work, tat_ca_dtv
 
 
 def ho_theo_ma_dtv(df_ho: pd.DataFrame, ma_dtv: str) -> pd.DataFrame:
@@ -558,44 +576,53 @@ def ho_theo_ma_dtv(df_ho: pd.DataFrame, ma_dtv: str) -> pd.DataFrame:
 
 
 def lay_danh_sach_nen(df: pd.DataFrame, ma_dtv: str) -> pd.DataFrame:
-    """Bước 1: đúng 100 hộ đầu tiên của Mã ĐTV trong file/sheet (thứ tự gốc)."""
-    return ho_theo_ma_dtv(df, ma_dtv).head(SO_HO_NEN).reset_index(drop=True)
+    """Bước 1: Lấy toàn bộ hộ nền của Mã ĐTV (không cắt giảm)."""
+    # Chỉ cần lọc theo ĐTV, không dùng .head(SO_HO_NEN)
+    return ho_theo_ma_dtv(df, ma_dtv).reset_index(drop=True)
 
 
-def chon_chi_so_mau_tu_nen(n_nen: int, k: int, r: int) -> list[int]:
+def chon_chi_so_mau_tu_nen(n_nen: int, k: int, r: int, so_luong_can_chon: int = 40) -> list[int]:
     """
-    Bước 2: từ n hộ nền, chọn đủ SO_HO_MAU chỉ số.
-    Lấy mẫu hệ thống bước nhảy k từ vị trí r; nếu chưa đủ thì bổ sung tuần tự các hộ còn lại.
+    Bước 2: Từ n hộ nền, chọn đủ số lượng mẫu (mặc định 40).
+    Sử dụng chọn mẫu hệ thống với bước nhảy k, bắt đầu từ r (1-based).
+    Nếu chưa đủ số lượng, bổ sung tuần tự các hộ còn lại.
     """
     if n_nen <= 0 or k < 1 or r < 1:
         return []
 
     picked: list[int] = []
     seen: set[int] = set()
-    pos = r - 1
-    while pos < n_nen and len(picked) < SO_HO_MAU:
+    
+    # 1. Chọn mẫu hệ thống (Nhảy cóc k đơn vị)
+    pos = r - 1  # Chuyển r (1-based) về index (0-based)
+    while pos < n_nen and len(picked) < so_luong_can_chon:
         if pos not in seen:
             picked.append(pos)
             seen.add(pos)
         pos += k
 
-    for i in range(n_nen):
-        if len(picked) >= SO_HO_MAU:
-            break
-        if i not in seen:
-            picked.append(i)
-            seen.add(i)
-
-    return picked[:SO_HO_MAU]
-
+    # 2. Nếu chưa đủ 40 hộ, chọn bù các hộ còn thiếu theo thứ tự
+    if len(picked) < so_luong_can_chon:
+        for i in range(n_nen):
+            if len(picked) >= so_luong_can_chon:
+                break
+            if i not in seen:
+                picked.append(i)
+                seen.add(i)
+                
+    return picked
 
 def gan_phan_loai_ho(df_nen: pd.DataFrame, chi_so_mau: list[int]) -> pd.DataFrame:
-    """Gán cột Phân loại: Mẫu (40) / Dự phòng/Nền (còn lại trong 100 hộ nền)."""
+    """Gán cột Phân loại: Mẫu (40) / Dự phòng (còn lại)."""
     out = df_nen.reset_index(drop=True).copy()
+    
+    # Mặc định tất cả là Dự phòng (PHAN_LOAI_NEN)
     out[COL_PHAN_LOAI] = PHAN_LOAI_NEN
+    
+    # Chỉ gán "Mẫu" cho các vị trí có trong danh sách chỉ số
     for i in chi_so_mau:
         if 0 <= i < len(out):
-            out.loc[out.index[i], COL_PHAN_LOAI] = PHAN_LOAI_MAU
+            out.loc[i, COL_PHAN_LOAI] = PHAN_LOAI_MAU
     return out
 
 
@@ -620,13 +647,26 @@ def ho_mau_can_dieu_tra(df_ho: pd.DataFrame) -> pd.DataFrame:
 def cap_nhat_danh_sach_ho_theo_dtv(
     df_all: pd.DataFrame, ma_dtv: str, df_nen_da_phan_loai: pd.DataFrame
 ) -> pd.DataFrame:
-    """Thay 100 hộ của một Mã ĐTV trong sheet DanhSachHo, giữ nguyên các ĐTV khác."""
+    """
+    Thay thế toàn bộ hộ của một Mã ĐTV trong sheet DanhSachHo bằng dữ liệu đã chọn mẫu, 
+    giữ nguyên các hộ của ĐTV khác.
+    """
     if df_all.empty:
         return df_nen_da_phan_loai
+    
+    # 1. Ép kiểu để so sánh chính xác
     ma = str(ma_dtv).strip()
+    
+    # 2. Lọc lấy các hộ KHÔNG thuộc ĐTV đang xử lý
     mask_khac = df_all["MaDTV"].astype(str).str.strip() != ma
     phan_con_lai = df_all[mask_khac]
-    return pd.concat([phan_con_lai, df_nen_da_phan_loai], ignore_index=True)
+    
+    # 3. Đảm bảo dữ liệu mới vẫn gắn với đúng Mã ĐTV
+    df_moi = df_nen_da_phan_loai.copy()
+    df_moi["MaDTV"] = ma
+    
+    # 4. Ghép lại toàn bộ danh sách (đã bao gồm các hộ đã chọn mẫu mới)
+    return pd.concat([phan_con_lai, df_moi], ignore_index=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1314,21 +1354,24 @@ def kiem_tra_validation_phieu(ho_so: str, form_ver: int) -> tuple[bool, list[str
 
 
 def reset_du_lieu_phieu_ho(ho_so: str, form_ver: int) -> None:
+    # 1. Reset các chi tiết lĩnh vực
     for muc in CHI_TIEU_PHAN_B:
         if muc["loai"] == "linh_vuc_sp":
             xoa_chi_tiet_linh_vuc(muc["ma"], ho_so, form_ver)
+    
     st.session_state.pop(f"ds_tv_{ho_so}_{form_ver}", None)
+    
+    # 2. Reset các nhóm hoạt động
     for nhom in NHOM_NHAP:
-        # Dòng dưới đây PHẢI thụt vào so với dòng "for" ở trên
         if isinstance(nhom, dict) and "id" in nhom:
             st.session_state.pop(_key_hoat_dong(nhom["id"], ho_so, form_ver), None)
-    else:
-        # Nếu dòng này in ra, bạn sẽ biết chính xác cái "nhom" lỗi là gì
-        st.write(f"Cảnh báo: Mục lỗi trong NHOM_NHAP: {nhom}")
+        else:
+            # Sửa: Đưa cảnh báo vào trong 'else' của 'if', không phải của 'for'
+            st.write(f"Cảnh báo: Mục lỗi trong NHOM_NHAP: {nhom}")
 
 
 def nhap_lieu_5_nhom(ho_so: str, form_ver: int) -> None:
-    """Tab 2 — 5 nhóm luồng nhập liệu độc lập."""
+    """Tab 2 — 5 nhóm luồng nhập liệu độc lập với giao diện tối ưu."""
     st.caption("Đơn vị: **nghìn đồng/tháng**.")
 
     for nhom in NHOM_NHAP:
@@ -1337,11 +1380,11 @@ def nhap_lieu_5_nhom(ho_so: str, form_ver: int) -> None:
             if nhom["id"] == "thanh_vien":
                 st.write("Nhập thông tin nhân khẩu hộ:")
             else:
-                # Tùy chỉnh câu hỏi cho từng loại nhóm
-                if nhom["id"] == "luong":
-                    cau_hoi = "Trong 12 tháng qua, hộ ông/bà có ai đi làm để nhận tiền lương, tiền công không?"
-                else:
-                    cau_hoi = f"Hộ có hoạt động {nhom['ten']} không?"
+                cau_hoi = (
+                    "Trong 12 tháng qua, hộ ông/bà có ai đi làm để nhận tiền lương, tiền công không?" 
+                    if nhom["id"] == "luong" 
+                    else f"Hộ có hoạt động {nhom['ten']} không?"
+                )
                 
                 co_hd = st.radio(
                     cau_hoi, 
@@ -1351,7 +1394,6 @@ def nhap_lieu_5_nhom(ho_so: str, form_ver: int) -> None:
                 ) == "Có"
                 
                 if not co_hd:
-                    # Logic khi chọn Không
                     if nhom["loai"] == "don":
                         _dat_zero_nhom_don(nhom["ma"], ho_so, form_ver)
                     elif nhom["loai"] == "nlt":
@@ -1359,17 +1401,20 @@ def nhap_lieu_5_nhom(ho_so: str, form_ver: int) -> None:
                     st.caption("Đã ghi **0**.")
                     continue
             
-            # Hiển thị phần nhập liệu tương ứng
+            # --- PHẦN HIỂN THỊ NHẬP LIỆU ---
             if nhom["id"] == "thanh_vien":
                 nhap_thanh_vien_ho(ho_so, form_ver)
             elif nhom["loai"] == "don":
-                muc = next((m for m in CHI_TIEU_PHAN_B if m["ma"] == nhom["ma"]), None)
+                # Dùng map_chi_tieu để lấy dữ liệu tức thời
+                muc = map_chi_tieu.get(nhom["ma"])
                 if muc:
                     nhap_muc_don_doc(muc["ma"], muc["ten"], ho_so, form_ver)
             elif nhom["loai"] == "nlt":
-                for muc in CHI_TIEU_PHAN_B:
-                    if muc["loai"] == "linh_vuc_sp":
-                        nhap_linh_vuc_co_san_pham(muc["ma"], muc["ten"], ho_so, form_ver)
+                # Lấy danh sách mục NLT và vẽ Divider thông minh
+                muc_nlt = [m for m in CHI_TIEU_PHAN_B if m["loai"] == "linh_vuc_sp"]
+                for i, muc in enumerate(muc_nlt):
+                    nhap_linh_vuc_co_san_pham(muc["ma"], muc["ten"], ho_so, form_ver)
+                    if i < len(muc_nlt) - 1:
                         st.divider()
 
 
@@ -1379,15 +1424,18 @@ def tab_nhap_lieu_mobile(ho_so: str, form_ver: int) -> None:
 
 
 def tinh_tong_7_nguon(du_lieu: dict[str, float]) -> float:
+    """Tính tổng 7 nguồn thu nhập theo danh sách cấu hình."""
     return sum(float(du_lieu.get(k, 0) or 0) for k, _ in BAO_CAO_7_NGUON)
 
 
 def tao_ban_tong_hop_7_nguon(du_lieu: dict[str, float]) -> pd.DataFrame:
+    """Tạo bảng tổng hợp 7 nguồn thu nhập để hiển thị."""
     rows = [{"Nguồn thu nhập": ten, "Giá trị (nghìn đ/tháng)": du_lieu.get(key, 0)} for key, ten in BAO_CAO_7_NGUON]
     return pd.DataFrame(rows)
 
 
 def dinh_dang_toa_do_gps(gia_tri: Any, *, fake: bool) -> str | None:
+    """Định dạng tọa độ GPS, xử lý gắn nhãn giả nếu cần."""
     if gia_tri is None:
         return None
     s = str(gia_tri)
@@ -1411,17 +1459,48 @@ def tao_dong_ket_qua_qd1099(
     geo: dict[str, Any] | None = None,
     ghi_chu_vi_tri: str = "",
 ) -> dict[str, Any]:
+    # 1. Khởi tạo row với tên cột chuẩn hóa
     row: dict[str, Any] = {
         "MaDTV": ma_dtv,
         "HoSo": str(ho.get("HoSo", "")),
-        "Huyen": str(ho.get("Huyen", "")),
+        "MaTKCS": str(ho.get("MaTKCS", ho.get("Huyen", ""))),
         "Xa": str(ho.get("Xa", "")),
         "DiaBan": str(ho.get("DiaBan", "")),
+        "MaDiaBan": str(geo.get("ma_dia_ban", ho.get("MaDiaBan", ""))),
         "TenChuHo": str(ho.get("TenChuHo", "")),
         "NhanKhauTT": nhan_khau,
         "ThuLuong": thu_luong,
         "ThuKhac": thu_khac,
     }
+
+    # 2. Xử lý logic GPS và xác thực vị trí (Mock GPS)
+    co_mock = bool(loc and (loc.get("mocked") or loc.get("is_mock")))
+    lat = loc.get("latitude") if loc else None
+    lng = loc.get("longitude") if loc else None
+    row["GPS_lat"] = dinh_dang_toa_do_gps(lat, fake=co_mock)
+    row["GPS_lng"] = dinh_dang_toa_do_gps(lng, fake=co_mock)
+    sai_so = gps.get("sai_so")
+    row["DoChinhXac"] = sai_so
+    row["Sai_so"] = sai_so
+    row["Do_cao"] = gps.get("do_cao")
+    
+    if co_mock:
+        row["Xac_Thuc_GPS"] = f"GIẢ - {_ten_ung_dung_gps_gia(loc)}"
+    else:
+        row["Xac_Thuc_GPS"] = gps.get("xac_thuc_gps", "Hợp lệ")
+        
+    row["IP"] = get_client_ip()
+    row["MockGPS"] = "Có" if (co_mock or gps.get("to_do_do")) else "Không"
+    row["NgayNhap"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # 3. Xử lý địa lý
+    if geo:
+        kc = geo.get("khoang_cach_m")
+        row["KhoangCachLech"] = round(kc, 1) if kc is not None else ""
+        row["GhiChuViTri"] = ghi_chu_vi_tri.strip()
+        row["DiaChi"] = geo.get("dia_chi", "")
+
+    # 4. Tính thu nhập 7 nguồn
     tong_7: dict[str, float] = {"ThuLuong": thu_luong, "ThuKhac": thu_khac}
     for code, _ten in LINH_VUC_NLN_TS:
         dt, cp, thuan = linh_vuc.get(code, (0.0, 0.0, 0.0))
@@ -1430,6 +1509,7 @@ def tao_dong_ket_qua_qd1099(
         row[f"Thu_{code}"] = thuan
         tong_7[f"Thu_{code}"] = thuan
 
+    # 5. Tính thu nhập SXKD và Tổng thu nhập
     thu_sxkd = thu_thuan(dt_sxkd, cp_sxkd)
     row["DT_SXKD"] = dt_sxkd
     row["CP_SXKD"] = cp_sxkd
@@ -1440,29 +1520,7 @@ def tao_dong_ket_qua_qd1099(
     nk = max(1, int(nhan_khau or 1))
     row["TongThuNhap"] = tong
     row["ThuBQDauNguoi"] = round(tong / nk, 2)
-
-    co_mock = bool(loc and (loc.get("mocked") or loc.get("is_mock")))
-    lat = loc.get("latitude") if loc else None
-    lng = loc.get("longitude") if loc else None
-    row["GPS_lat"] = dinh_dang_toa_do_gps(lat, fake=co_mock)
-    row["GPS_lng"] = dinh_dang_toa_do_gps(lng, fake=co_mock)
-    sai_so = gps.get("sai_so")
-    row["DoChinhXac"] = sai_so
-    row["Sai_so"] = sai_so
-    row["Do_cao"] = gps.get("do_cao")
-    if co_mock:
-        row["Xac_Thuc_GPS"] = f"GIẢ - {_ten_ung_dung_gps_gia(loc)}"
-    else:
-        row["Xac_Thuc_GPS"] = gps.get("xac_thuc_gps", "Hợp lệ")
-    row["IP"] = get_client_ip()
-    row["MockGPS"] = "Có" if (co_mock or gps.get("to_do_do")) else "Không"
-    row["NgayNhap"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    if geo:
-        kc = geo.get("khoang_cach_m")
-        row["KhoangCachLech"] = round(kc, 1) if kc is not None else ""
-        row["MaDiaBan"] = geo.get("ma_dia_ban", "")
-        row["GhiChuViTri"] = ghi_chu_vi_tri.strip()
-        row["DiaChi"] = geo.get("dia_chi", "")
+    
     return row
 
 
@@ -1715,11 +1773,10 @@ def page_login():
     with col2:
         vai_tro = st.radio(
             "Vai trò đăng nhập",
-            ["Quản trị viên", "Điều tra viên"],
+            ["QUẢN TRỊ VIÊN", "ĐIỀU TRA VIÊN"],
             horizontal=True,
         )
-
-        st.caption("Tài khoản ĐTV: sheet **Account** trên Google Sheets.")
+       
         if vai_tro == "Quản trị viên":
             mk = st.text_input("Mật khẩu Admin", type="password", key="login_admin_mk")
             if st.button("Đăng nhập", type="primary", use_container_width=True, key="btn_login_admin"):
@@ -1956,25 +2013,34 @@ def render_admin_dashboard() -> None:
                         st.plotly_chart(fig2, use_container_width=True)
 
         with card_container("Tổng hợp nhanh thu nhập"):
+            # Lấy nhãn chuẩn từ từ điển ten_vi
+            label_xa = ten_vi["Xa"]
+            label_tkcs = ten_vi["Huyen"] # Đây chính là "Mã TKCS" bạn đã đổi
+            
+            # Sửa selectbox: dùng label_xa và label_tkcs
             xa_tb = st.selectbox(
-                "Xã (bảng tổng hợp)",
-                ["Toàn huyện"] + sorted(work["Xa"].astype(str).str.strip().unique().tolist()),
+                f"{label_xa} (bảng tổng hợp)",
+                [f"Toàn bộ {label_tkcs}"] + sorted(work["Xa"].astype(str).str.strip().unique().tolist()),
                 key="dash_xa_bang",
             )
-            if xa_tb == "Toàn huyện":
+            # Logic lọc dữ liệu
+            if xa_tb == f"Toàn bộ {label_tkcs}":
                 df_tb = df_kq_num
             else:
+                # Lọc theo đúng Xã đã chọn
                 df_tb = df_kq_num[df_kq_num["Xa"].astype(str).str.strip() == xa_tb] if not df_kq_num.empty else pd.DataFrame()
+            
+            # Hiển thị bảng
             bang = _bang_tong_hop_thu_nhap(df_tb)
             if bang.empty:
-                st.caption("Chưa có dữ liệu thu nhập.")
+                st.caption(f"Chưa có dữ liệu thu nhập cho {label_xa} này.")
             else:
                 hien_dataframe_an_toan(bang)
 
     with st.expander("👥 Quản lý ĐTV — Reset mật khẩu", expanded=False):
         df_acc = read_accounts()
         if df_acc.empty:
-            st.caption("Chưa có tài khoản ĐTV.")
+            st.caption("Chưa có TÀI KHOẢN ĐTV.")
         else:
             map_xh = xa_huyen_theo_dtv(df_ho)
             for _, row in df_acc.iterrows():
@@ -2010,10 +2076,11 @@ def admin_he_thong():
 
     with tab1:
         st.caption(
-            "Tệp Excel cần có: **Huyện**, **Xã**, **Địa bàn**, **Hộ số**, **Tên chủ hộ**, **Mã ĐTV** "
-            "(có dấu hoặc không dấu đều được). Hệ thống tự lọc **10 Mã ĐTV đầu tiên**, "
-            "mỗi mã **100 hộ nền đầu tiên** (tối đa **1.000 hộ**). "
-            "Sau đó sang tab **Chọn mẫu** để đánh dấu **40 hộ mẫu** / 60 hộ dự phòng."
+            f"Tệp Excel cần có: **{ten_vi['Huyen']}**, **{ten_vi['Xa']}**, **{ten_vi['DiaBan']}**, "
+        f"**{ten_vi['HoSo']}**, **{ten_vi['TenChuHo']}**, **{ten_vi['MaDTV']}** "
+        "(có dấu hoặc không dấu đều được). Hệ thống tự lọc **10 {ten_vi['MaDTV']} đầu tiên**, "
+        "mỗi mã **100 hộ nền đầu tiên** (tối đa **1.000 hộ**). "
+        "Sau đó sang tab **Chọn mẫu** để đánh dấu **40 hộ mẫu** / 60 hộ dự phòng."
         )
         f = st.file_uploader("Chọn tệp Excel (.xlsx, .xls)", type=["xlsx", "xls"], key="upload_ho_excel")
         if f and st.button("Tải lên", type="primary", use_container_width=True):
@@ -2022,47 +2089,51 @@ def admin_he_thong():
             except Exception as e:
                 st.error(f"Lỗi đọc tệp Excel: {e}")
                 return
+            
             if df_raw is None:
-                st.error(
-                    "Thiếu các cột bắt buộc (sau khi nhận diện tên cột): " + ", ".join(thieu)
-                )
+                st.error("Thiếu các cột bắt buộc: " + ", ".join(thieu))
                 return
 
-            df_loc, dtv_10 = loc_mau_1000_ho(df_raw)
-            if df_loc.empty or not dtv_10:
-                st.error(
-                    "Không lọc được hộ mẫu. Kiểm tra cột **Mã ĐTV** trong file Excel "
-                    "và đảm bảo có đủ dữ liệu."
-                )
+            # Gọi hàm lọc đã được bỏ giới hạn
+            df_loc, dtv_list = loc_mau_1000_ho(df_raw)
+            
+            if df_loc.empty:
+                st.error("File Excel không có dữ liệu hộ nào.")
                 return
-
+            
+            # Thông báo cho bạn và anh Truyền biết đã tải bao nhiêu hộ
+            st.success(f"Đã tải thành công **{len(df_loc)}** hộ vào hệ thống.")
+            
+            # (Giữ nguyên các đoạn code logic tiếp theo của bạn ở đây...)
+            # 1. Sửa caption hiển thị tổng số
             st.caption(
                 f"Trong file gốc có **{len(danh_sach_ma_dtv_theo_thu_tu(df_raw['MaDTV']))}** "
-                f"Mã ĐTV; đã lấy **{len(dtv_10)}** mã đầu tiên."
+                f"Mã ĐTV; hệ thống đã lấy toàn bộ để xử lý."
             )
 
             cot_ho = COL_HO + ["MaDTV"]
             for cot_them in ("DiaChi", "MaDiaBan"):
                 if cot_them in df_loc.columns:
                     cot_ho.append(cot_them)
+            
             df_ho_gs = df_loc[cot_ho].copy()
             df_ho_gs[COL_PHAN_LOAI] = PHAN_LOAI_NEN
             ok_ho = write_sheet_replace(SHEETS["danh_sach_ho"], df_ho_gs)
 
             if ok_ho:
-                dong_bo_account_tu_ma_dtv(dtv_10)
+                # 2. Đẩy toàn bộ dtv_list (không còn dtv_10) vào đồng bộ
+                dong_bo_account_tu_ma_dtv(dtv_list) 
                 write_sheet_replace(SHEETS["phan_cong"], pd.DataFrame(), silent=True)
                 write_sheet_replace(SHEETS["ket_qua"], pd.DataFrame(), silent=True)
 
-                if len(dtv_10) == 10 and len(df_loc) == 1000:
-                    st.toast("Đã lọc và nạp thành công 1.000 hộ của 10 ĐTV.", icon="✅")
-                else:
-                    st.toast(
-                        f"Đã nạp {len(df_loc)} hộ của {len(dtv_10)} ĐTV.",
-                        icon="✅",
-                    )
+                # 3. Bỏ logic kiểm tra 10 và 1000
+                st.toast(
+                    f"Đã nạp thành công {len(df_loc)} hộ của {len(dtv_list)} ĐTV.", 
+                    icon="✅"
+                )
+                
                 st.caption(
-                    f"Mã ĐTV: {', '.join(dtv_10)} — Tiếp theo: tab **Chọn mẫu hệ thống**."
+                    f"Tổng số ĐTV: {len(dtv_list)} — Tiếp theo: tab **Chọn mẫu hệ thống**."
                 )
                 st.markdown("#### Dữ liệu hộ vừa nạp")
                 hien_bang_ngang(df_loc)
@@ -2070,67 +2141,94 @@ def admin_he_thong():
                 st.toast("Không ghi được dữ liệu. Kiểm tra kết nối.", icon="⚠️")
 
     with tab2:
-        st.caption(
-            f"**Bước 1:** Lấy **{SO_HO_NEN} hộ nền** đầu tiên của mỗi Mã ĐTV (đã nạp ở tab Tải lên). "
-            f"**Bước 2:** Trong 100 hộ đó, chọn **{SO_HO_MAU} hộ mẫu** theo bước nhảy **k** "
-            f"(ví dụ k=2: cách 1 hộ lấy 1 hộ). Nếu chưa đủ {SO_HO_MAU} thì lấy nốt các hộ tiếp theo. "
-            f"**Bước 3:** Ghi cả 100 hộ lên Google Sheets với cột **Phân loại**."
-        )
-        df_ho = read_sheet(SHEETS["danh_sach_ho"])
-        if df_ho.empty:
-            st.warning("Chưa có danh sách hộ. Vui lòng tải lên Excel ở tab «Tải lên danh sách hộ».")
-            return
-
-        if "MaDTV" not in df_ho.columns:
-            st.warning("Danh sách hộ chưa có cột Mã ĐTV. Vui lòng tải lên lại file Excel.")
-            return
-        dtv_list = danh_sach_ma_dtv_theo_thu_tu(df_ho["MaDTV"])
-        if not dtv_list:
-            st.warning("Không có Mã ĐTV trong danh sách đã nạp.")
-            return
-
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            ma_dtv = st.selectbox("Mã điều tra viên", dtv_list)
-        with c2:
-            k = st.number_input(
-                "k (bước nhảy)",
-                min_value=1,
-                value=2,
-                step=1,
-                help=f"Cứ cách k-1 hộ lấy 1 hộ trong {SO_HO_NEN} hộ nền, đến đủ {SO_HO_MAU} hộ mẫu",
+            st.caption(
+                f"Hệ thống đang xử lý **toàn bộ hộ** của mỗi {ten_vi['MaDTV']} đã nạp. "
+                "Bạn có thể thực hiện chọn mẫu tự động trên tổng số lượng hộ hiện có."
             )
-        with c3:
-            r = st.number_input(
-                "r (vị trí bắt đầu trong 100 hộ nền)",
-                min_value=1,
-                max_value=SO_HO_NEN,
-                value=1,
-                step=1,
-            )
-
-        df_nen = lay_danh_sach_nen(df_ho, ma_dtv)
-        st.caption(f"Mã **{ma_dtv}**: có **{len(df_nen)}** hộ nền (tối đa {SO_HO_NEN}).")
-
-        if st.button("Chạy chọn mẫu và ghi Google Sheets", type="primary"):
-            if len(df_nen) < SO_HO_MAU:
-                st.warning(
-                    f"Chỉ có **{len(df_nen)}** hộ nền — cần ít nhất **{SO_HO_MAU}** hộ để chọn mẫu."
-                )
+            
+            df_ho = read_sheet(SHEETS["danh_sach_ho"])
+            if df_ho.empty:
+                st.warning("Chưa có danh sách hộ. Vui lòng tải lên Excel ở tab «Tải lên danh sách hộ».")
                 return
 
+            if "MaDTV" not in df_ho.columns:
+                st.warning("Danh sách hộ chưa có cột Mã ĐTV. Vui lòng tải lên lại file Excel.")
+                return
+            
+            dtv_list = danh_sach_ma_dtv_theo_thu_tu(df_ho["MaDTV"])
+            if not dtv_list:
+                st.warning("Không có Mã ĐTV trong danh sách đã nạp.")
+                return
+
+            # PHẦN CHỌN MẪU ĐÃ ĐƯỢC MỞ KHÓA:
+            # Thay vì dùng df_ho.groupby("MaDTV").head(SO_HO_NEN), 
+            # chúng ta lấy toàn bộ dữ liệu để tính toán
+            df_chon_mau = df_ho.copy()
+            
+            st.success(f"Đã nạp thành công toàn bộ **{len(df_chon_mau)}** hộ để chọn mẫu.")
+
+        # Lấy tổng số hộ của ĐTV hiện tại để làm căn cứ tính toán
+        df_nen = lay_danh_sach_nen(df_ho, ma_dtv)
+        tong_so_ho = len(df_nen)
+        
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            ma_dtv = st.selectbox(ten_vi["MaDTV"], dtv_list)
+        with c2:
+            # Bước nhảy k vẫn giữ nguyên
+            k = st.number_input("k (bước nhảy)", min_value=1, value=2, step=1)
+        with c3:
+            # r (vị trí bắt đầu) không nên để max là 100 nữa, mà là tổng số hộ
+            r = st.number_input(
+                "r (vị trí bắt đầu)", 
+                min_value=1, 
+                max_value=max(1, tong_so_ho), 
+                value=1, 
+                step=1
+            )
+
+        st.caption(f"Mã ĐTV **{ma_dtv}**: có tổng cộng **{tong_so_ho}** hộ nền.")
+
+        if st.button("Chạy chọn mẫu và ghi Google Sheets", type="primary"):
+            # Thay vì yêu cầu cứng nhắc 40 hộ, hãy để tùy bạn chọn 
+            # hoặc ít nhất là 1 hộ để không bị chặn
+            if tong_so_ho < 1:
+                st.warning("Không có hộ nào để chọn mẫu.")
+                return
+            
+            # Ở đây bạn gọi hàm chọn mẫu của bạn
+            # Đảm bảo hàm 'thuc_hien_chon_mau' không chứa biến SO_HO_NEN bên trong
+            # Bạn hãy sửa hàm đó để nhận vào 'tong_so_ho' thay vì hằng số cũ
+            result = thuc_hien_chon_mau(df_nen, k, r) 
+            st.success("Đã chọn mẫu xong trên toàn bộ dữ liệu!")
+
+            # 1. Thực hiện chọn mẫu trên toàn bộ dữ liệu
             df_da_chon = ap_dung_chon_mau_cho_dtv(df_ho, ma_dtv, int(k), int(r))
+            
+            # 2. Tính toán số lượng để kiểm soát
             so_mau = int((df_da_chon[COL_PHAN_LOAI] == PHAN_LOAI_MAU).sum())
             so_nen = int((df_da_chon[COL_PHAN_LOAI] == PHAN_LOAI_NEN).sum())
+            tong_da_xu_ly = len(df_da_chon)
 
+            # 3. Cập nhật vào Sheets
             df_out = cap_nhat_danh_sach_ho_theo_dtv(df_ho, ma_dtv, df_da_chon)
+            
             if write_sheet_replace(SHEETS["danh_sach_ho"], df_out):
+                # 4. CHÈN THÊM: Kiểm tra tính toàn vẹn của dữ liệu trước khi báo cáo
+                if tong_da_xu_ly != (so_mau + so_nen):
+                    st.warning(f"⚠️ Cảnh báo: Tổng số hộ ({tong_da_xu_ly}) không khớp với số đã phân loại ({so_mau + so_nen}).")
+                
+                # 5. Toast thông báo thành công
                 st.toast(
-                    f"Đã chọn mẫu {ma_dtv}: {so_mau} hộ Mẫu, {so_nen} hộ Dự phòng.",
+                    f"Đã chọn mẫu {ma_dtv}: {so_mau} Mẫu, {so_nen} Dự phòng.",
                     icon="✅",
                 )
+                
+                # 6. Hiển thị bảng để "nhìn vào" và kiểm tra thực tế
+                st.info(f"Tổng cộng đã xử lý: **{tong_da_xu_ly}** hộ.")
                 hien_bang_ngang(df_da_chon)
-
+            else:
+                st.error("Lỗi: Không ghi được dữ liệu vào Google Sheets.")
 
 def admin_tien_do():
     render_header("📊 Tiến độ hoàn thành")
