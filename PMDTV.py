@@ -1319,9 +1319,9 @@ def reset_du_lieu_phieu_ho(ho_so: str, form_ver: int) -> None:
             xoa_chi_tiet_linh_vuc(muc["ma"], ho_so, form_ver)
     st.session_state.pop(f"ds_tv_{ho_so}_{form_ver}", None)
     for nhom in NHOM_NHAP:
-    # Kiểm tra xem 'id' có tồn tại trong dict nhom không trước khi gọi
-    if isinstance(nhom, dict) and "id" in nhom:
-        st.session_state.pop(_key_hoat_dong(nhom["id"], ho_so, form_ver), None)
+        # Dòng dưới đây PHẢI thụt vào so với dòng "for" ở trên
+        if isinstance(nhom, dict) and "id" in nhom:
+            st.session_state.pop(_key_hoat_dong(nhom["id"], ho_so, form_ver), None)
     else:
         # Nếu dòng này in ra, bạn sẽ biết chính xác cái "nhom" lỗi là gì
         st.write(f"Cảnh báo: Mục lỗi trong NHOM_NHAP: {nhom}")
