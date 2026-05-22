@@ -1901,7 +1901,7 @@ def render_admin_dashboard() -> None:
     st.markdown("""<style>.block-container { padding-top: 0rem !important; }</style>""", unsafe_allow_html=True)
 
     # 2. Ảnh Panel (Đã chọn ảnh ngang phù hợp)
-    st.image("https://images.unsplash.com/photo-1523348837708-15d4a09cfacb?q=80&w=2070", use_container_width=True)
+    st.image("https://tttctt.1cdn.vn/2024/04/24/mohinhkinhdoanhmoi.jpg", use_container_width=True)
 
     # 3. Tiêu đề (Logo + Chữ)
     col1, col2 = st.columns([1, 12])
