@@ -2407,48 +2407,30 @@ def dtv_nhap_phieu():
                     hien_loi_validation(msg)
 
         st.markdown("---")
-        if st.button(
-            "💾 Lưu phiếu",
-            type="primary",
-            use_container_width=True,
-            key=f"luu_{ho_so}_{form_ver}",
-            disabled=not hop_le,
-        ):
+        if st.button("💾 Lưu phiếu", type="primary", use_container_width=True, key=f"luu_{ho_so}_{form_ver}", disabled=not hop_le):
             if geodesic is None:
-                st.toast("Thiếu thư viện geopy.", icon="⚠️")
-                return
+                st.warning("Thiếu thư viện geopy.", icon="⚠️")
 
             gps = phan_tich_vi_tri_gps(loc)
             if gps["canh_bao_dtv"]:
-                st.toast(gps["canh_bao_dtv"], icon="📍")
+                st.warning(f"Cảnh báo: {gps['canh_bao_dtv']}", icon="📍")
+                gps["GhiChuAdmin"] = "Cảnh báo: GPS không chính xác"
 
             geo = phan_tich_geofence(ho, loc)
             gc = str(st.session_state.get(f"gc_vitri_{ho_so}_{form_ver}", "") or "").strip()
+            
             if geo.get("bat_buoc_ghi_chu") and not gc:
-                st.toast("Vui lòng ghi chú lý do khi vị trí lệch quá 2 km.", icon="⚠️")
-                return
+                st.warning("Vị trí lệch > 2km, phiếu vẫn được lưu nhưng sẽ được đánh dấu.", icon="⚠️")
+                geo["GhiChuAdmin"] = "Vị trí lệch ngưỡng"
+            
             if geo.get("muc") == "vang":
-                st.toast(geo.get("canh_bao", CANH_BAO_GEO_VANG), icon="📍")
+                st.warning(geo.get("canh_bao", CANH_BAO_GEO_VANG), icon="📍")
             elif geo.get("muc") == "do":
-                st.toast(geo.get("canh_bao", CANH_BAO_GEO_DO), icon="⚠️")
+                st.warning(geo.get("canh_bao", CANH_BAO_GEO_DO), icon="⚠️")
 
-            row = tao_dong_ket_qua_qd1099(
-                ma_dtv=ma,
-                ho=ho,
-                nhan_khau=nk,
-                thu_luong=du_lieu_form["thu_luong"],
-                linh_vuc=du_lieu_form["linh_vuc"],
-                dt_sxkd=du_lieu_form["dt_sxkd"],
-                cp_sxkd=du_lieu_form["cp_sxkd"],
-                thu_khac=du_lieu_form["thu_khac"],
-                loc=loc,
-                gps=gps,
-                geo=geo,
-                ghi_chu_vi_tri=gc,
-            )
+            row = tao_dong_ket_qua_qd1099(ma_dtv=ma, ho=ho, nhan_khau=nk, thu_luong=du_lieu_form["thu_luong"], linh_vuc=du_lieu_form["linh_vuc"], dt_sxkd=du_lieu_form["dt_sxkd"], cp_sxkd=du_lieu_form["cp_sxkd"], thu_khac=du_lieu_form["thu_khac"], loc=loc, gps=gps, geo=geo, ghi_chu_vi_tri=gc)
+            
             if append_ket_qua(row, silent=True):
-                reset_du_lieu_phieu_ho(ho_so, form_ver)
-                st.session_state.form_ver = form_ver + 1
                 st.toast("Đã lưu phiếu thành công.", icon="✅")
                 st.rerun()
             else:
