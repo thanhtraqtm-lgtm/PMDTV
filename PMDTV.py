@@ -665,35 +665,25 @@ def _spreadsheet_url() -> str:
     return url
 
 
-def _credentials_json_path() -> Path:
-    """Chỉ dùng đúng file JSON khai báo trong secrets — không đoán file khác."""
-    root = _project_root()
-    cfg = _gsheets_cfg()
-    cred_file = cfg.get("credentials_file")
-    if not cred_file:
-        raise FileNotFoundError(
-            "Thiếu credentials_file trong [connections.gsheets] "
-            "(ví dụ: .credentials/crypto-avenue-410700-f7e540ba2e49.json)"
-        )
-    path = Path(cred_file)
-    if not path.is_absolute():
-        path = root / path
-    if not path.exists():
-        raise FileNotFoundError(f"Không tìm thấy file JSON: {path}")
-    return path
+# --- KẾT NỐI MỚI - GỌN VÀ CHUẨN ---
+@st.cache_resource
+def _gspread_client():
+    # Lấy trực tiếp từ Secrets - không tìm file vật lý nữa
+    json_key = json.loads(st.secrets["gcp_service_account"]["json"])
+    creds = Credentials.from_service_account_info(
+        json_key, 
+        scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+    )
+    return gspread.authorize(creds)
 
+def _open_spreadsheet():
+    # Mở sheet bằng URL từ Secrets
+    return _gspread_client().open_by_url(st.secrets["connections"]["gsheets"]["spreadsheet"])
 
 def _service_account_email() -> str:
-    _, data = _load_credentials_json()
-    return str(data.get("client_email", "")).strip()
-
-
-def _load_credentials_json() -> tuple[Path, dict]:
-    path = _credentials_json_path()
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if data.get("type") != "service_account":
-        raise ValueError(f"File JSON không phải Service Account: {path}")
-    return path, data
+    # Lấy email từ chính cái JSON trong Secrets
+    json_key = json.loads(st.secrets["gcp_service_account"]["json"])
+    return str(json_key.get("client_email", "")).strip()
 
 
 @st.cache_resource
@@ -748,26 +738,14 @@ def hien_thi_thong_tin_ket_noi_gsheets(*, truoc_khi_ghi: bool = False) -> bool:
 
 
 def _loi_api_chua_bat(exc: Exception) -> str:
-    """Google Cloud project chưa bật Google Sheets API (thường bị gói thành PermissionError)."""
-    try:
-        _, data = _load_credentials_json()
-        project_id = data.get("project_id", "")
-    except Exception:
-        project_id = ""
-    link = (
-        f"https://console.developers.google.com/apis/api/sheets.googleapis.com/overview"
-        f"?project={project_id}"
-        if project_id
-        else "https://console.cloud.google.com/apis/library/sheets.googleapis.com"
-    )
+    """Thông báo lỗi API trực tiếp, không cần gọi file JSON."""
     return (
-        f"❌ **Google Sheets API chưa được bật** trên project Google Cloud của file JSON.\n\n"
-        f"Đây là lý do chính gây PermissionError dù đã chia sẻ Editor đúng email.\n\n"
-        f"**Cách sửa:**\n"
-        f"1. Mở: {link}\n"
-        f"2. Bấm **Enable** (Bật) Google Sheets API\n"
-        f"3. (Khuyến nghị) Bật thêm **Google Drive API** trên cùng project\n"
-        f"4. Đợi 1–2 phút rồi chạy lại app\n\n"
+        f"❌ **Lỗi kết nối Google API:**\n\n"
+        f"Có thể Google Sheets API hoặc Google Drive API chưa được bật trên Google Cloud Console.\n\n"
+        f"**Cách xử lý:**\n"
+        f"1. Truy cập: https://console.cloud.google.com/apis/library\n"
+        f"2. Tìm và bật (Enable) 'Google Sheets API' và 'Google Drive API'.\n"
+        f"3. Kiểm tra xem email Service Account đã được chia sẻ quyền 'Editor' với file Sheets của bạn chưa.\n\n"
         f"Chi tiết kỹ thuật: {exc}"
     )
 
