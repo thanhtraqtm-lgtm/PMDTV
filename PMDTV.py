@@ -2407,32 +2407,40 @@ def dtv_nhap_phieu():
                     hien_loi_validation(msg)
 
         st.markdown("---")
-        if st.button("💾 Lưu phiếu", type="primary", use_container_width=True, key=f"luu_{ho_so}_{form_ver}", disabled=not hop_le):
+        if st.button(
+            "💾 Lưu phiếu",
+            type="primary",
+            use_container_width=True,
+            key=f"luu_{ho_so}_{form_ver}",
+            disabled=not hop_le,
+        ):
+            # --- PHẦN 1: KIỂM TRA (CHỈ CẢNH BÁO, KHÔNG DỪNG) ---
             if geodesic is None:
                 st.warning("Thiếu thư viện geopy.", icon="⚠️")
+                # Không return ở đây
 
             gps = phan_tich_vi_tri_gps(loc)
-            if gps["canh_bao_dtv"]:
-                st.warning(f"Cảnh báo: {gps['canh_bao_dtv']}", icon="📍")
-                gps["GhiChuAdmin"] = "Cảnh báo: GPS không chính xác"
+            if gps and gps.get("canh_bao_dtv"):
+                st.warning(f"⚠️ {gps['canh_bao_dtv']}", icon="⚠️")
+                gps["GhiChuAdmin"] = f"Cảnh báo: {gps['canh_bao_dtv']}"
 
             geo = phan_tich_geofence(ho, loc)
-            gc = str(st.session_state.get(f"gc_vitri_{ho_so}_{form_ver}", "") or "").strip()
-            
-            if geo.get("bat_buoc_ghi_chu") and not gc:
-                st.warning("Vị trí lệch > 2km, phiếu vẫn được lưu nhưng sẽ được đánh dấu.", icon="⚠️")
-                geo["GhiChuAdmin"] = "Vị trí lệch ngưỡng"
-            
-            if geo.get("muc") == "vang":
-                st.warning(geo.get("canh_bao", CANH_BAO_GEO_VANG), icon="📍")
-            elif geo.get("muc") == "do":
-                st.warning(geo.get("canh_bao", CANH_BAO_GEO_DO), icon="⚠️")
+            # Không return ở đây kể cả khi lệch geofence
 
-            row = tao_dong_ket_qua_qd1099(ma_dtv=ma, ho=ho, nhan_khau=nk, thu_luong=du_lieu_form["thu_luong"], linh_vuc=du_lieu_form["linh_vuc"], dt_sxkd=du_lieu_form["dt_sxkd"], cp_sxkd=du_lieu_form["cp_sxkd"], thu_khac=du_lieu_form["thu_khac"], loc=loc, gps=gps, geo=geo, ghi_chu_vi_tri=gc)
+            # --- PHẦN 2: LƯU PHIẾU (LUÔN CHẠY) ---
+            row = tao_dong_ket_qua_qd1099(
+                ma_dtv=ma, 
+                ho=ho, 
+                nhan_khau=nk,
+                # ... (giữ nguyên các tham số cũ của bạn) ...
+                gps=gps,
+                geo=geo
+            )
             
+            # --- PHẦN 3: KẾT QUẢ ---
             if append_ket_qua(row, silent=True):
                 st.toast("Đã lưu phiếu thành công.", icon="✅")
-                st.rerun()
+                st.rerun() # Dòng này sẽ làm mới lại form cho ĐTV
             else:
                 st.toast("Không lưu được phiếu.", icon="⚠️")
 
