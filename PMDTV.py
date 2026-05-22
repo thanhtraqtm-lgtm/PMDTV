@@ -1897,17 +1897,17 @@ def _bang_tong_hop_thu_nhap(df_kq_xa: pd.DataFrame) -> pd.DataFrame:
 
 
 def render_admin_dashboard() -> None:
-    # 1. Ép giao diện lên trên cùng (xóa khoảng trắng thừa)
+    # Ép giao diện lên trên cùng
     st.markdown("""<style>.block-container { padding-top: 0rem !important; }</style>""", unsafe_allow_html=True)
 
-    # 2. Ảnh Panel (Đã chọn ảnh ngang phù hợp)
-    st.image("https://tttctt.1cdn.vn/2024/04/24/mohinhkinhdoanhmoi.jpg", use_container_width=True)
+    # Dán link Banner vào đây
+    st.image("https://images.unsplash.com/photo-1523348837708-15d4a09cfacb?q=80&w=2070", use_container_width=True)
 
-    # 3. Tiêu đề (Logo + Chữ)
+    # Bố cục logo và tiêu đề
     col1, col2 = st.columns([1, 12])
     with col1:
-        # Sử dụng link logo thay vì file trong máy để tránh lỗi
-        st.image("https://cdn-icons-png.flaticon.com/512/2904/2904975.png", width=45) 
+        # Dán link Logo vào đây
+        st.image("https://cdn-icons-png.flaticon.com/512/2904/2904975.png", width=45)
     with col2:
         st.markdown("## PHẦN MỀM ĐIỀU TRA THU NHẬP")
     
