@@ -1897,14 +1897,24 @@ def _bang_tong_hop_thu_nhap(df_kq_xa: pd.DataFrame) -> pd.DataFrame:
 
 
 def render_admin_dashboard() -> None:
-    """Hệ thống điều hành thống kê — hiển thị ngay khi Admin đăng nhập."""
-    user = st.session_state.get("user", {})
-    if user.get("role") != "admin" or not is_admin(str(user.get("ma", ""))):
-        st.warning("Bạn không có quyền truy cập trang quản trị.")
-        return
+    # 0. Ép giao diện lên trên cùng
+    st.markdown("""<style>.main .block-container { padding-top: 1rem; }</style>""", unsafe_allow_html=True)
 
-    render_header("ĐIỀU HÀNH THỐNG KÊ")
+    # 1. Ảnh panel sát lề
+    st.image("panel_image.png", use_container_width=True)
 
+    # 2. Tiêu đề ngang
+    col_logo, col_title = st.columns([1, 12])
+    with col_logo:
+        st.image("logo.png", width=45)
+    with col_title:
+        st.markdown("## PHẦN MỀM ĐIỀU TRA THU NHẬP")
+
+    # 3. Tiêu đề phụ
+    st.subheader("📊 Điều hành thống kê")
+    st.divider()
+
+    # 4. Xử lý dữ liệu
     df_ho = read_sheet(SHEETS["danh_sach_ho"], silent=True)
     df_kq = read_sheet(SHEETS["ket_qua"], silent=True)
     work = _df_mau_tien_do(df_ho, df_kq)
@@ -1917,9 +1927,8 @@ def render_admin_dashboard() -> None:
     thu_bq = 0.0
     if not df_kq_num.empty and "ThuBQDauNguoi" in df_kq_num.columns:
         thu_bq = round(float(df_kq_num["ThuBQDauNguoi"].mean()), 1)
-    elif not df_kq_num.empty and "TongThuNhap" in df_kq_num.columns:
-        thu_bq = round(float(df_kq_num["TongThuNhap"].mean()), 1)
 
+    # 5. Dashboard
     with card_container():
         k1, k2, k3, k4 = st.columns(4)
         k1.metric("Tổng hộ", f"{tong_ho:,}")
