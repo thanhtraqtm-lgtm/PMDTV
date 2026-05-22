@@ -1329,22 +1329,23 @@ def reset_du_lieu_phieu_ho(ho_so: str, form_ver: int) -> None:
 
 def nhap_lieu_5_nhom(ho_so: str, form_ver: int) -> None:
     """Tab 2 — 5 nhóm luồng nhập liệu độc lập."""
-    st.caption("Đơn vị: **nghìn đồng/tháng**. Mỗi nhóm hỏi trước — chọn **Không** sẽ ghi 0 và chuyển nhóm tiếp theo.")
+    st.caption("Đơn vị: **nghìn đồng/tháng**.")
 
     for nhom in NHOM_NHAP:
         with card_container(nhom["ten"]):
-            co_hd = hoi_co_hoat_dong(nhom, ho_so, form_ver)
-            if not co_hd:
-                if nhom["loai"] == "thanh_vien":
-                    st.session_state[f"ds_tv_{ho_so}_{form_ver}"] = []
-                elif nhom["loai"] == "don":
-                    _dat_zero_nhom_don(nhom["ma"], ho_so, form_ver)
-                elif nhom["loai"] == "nlt":
-                    _dat_zero_nhom_nlt(ho_so, form_ver)
-                st.caption("Đã ghi **0** — chuyển sang nhóm kế tiếp.")
-                continue
-
-            if nhom["loai"] == "thanh_vien":
+            # Chỉ hỏi Có/Không cho các nhóm kinh tế, không hỏi cho nhóm thành viên
+            if nhom["id"] != "thanh_vien":
+                co_hd = hoi_co_hoat_dong(nhom, ho_so, form_ver)
+                if not co_hd:
+                    if nhom["loai"] == "don":
+                        _dat_zero_nhom_don(nhom["ma"], ho_so, form_ver)
+                    elif nhom["loai"] == "nlt":
+                        _dat_zero_nhom_nlt(ho_so, form_ver)
+                    st.caption("Đã ghi **0** — chuyển sang nhóm kế tiếp.")
+                    continue
+            
+            # Hiển thị phần nhập liệu tương ứng
+            if nhom["id"] == "thanh_vien":
                 nhap_thanh_vien_ho(ho_so, form_ver)
             elif nhom["loai"] == "don":
                 muc = next((m for m in CHI_TIEU_PHAN_B if m["ma"] == nhom["ma"]), None)
