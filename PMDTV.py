@@ -18,6 +18,18 @@ import plotly.graph_objects as go
 import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
+# --- BẮT ĐẦU ĐOẠN CẦN THÊM ---
+try:
+    from streamlit_geolocation import streamlit_geolocation
+except ImportError:
+    streamlit_geolocation = None
+
+try:
+    from geopy.geocoders import Nominatim
+    from geopy.distance import geodesic
+except ImportError:
+    Nominatim = None
+    geodesic = None
 
 # --- 1. CẤU HÌNH KẾT NỐI (DÙNG SECRETS) ---
 _GSHEETS_SCOPES = [
