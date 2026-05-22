@@ -1897,24 +1897,26 @@ def _bang_tong_hop_thu_nhap(df_kq_xa: pd.DataFrame) -> pd.DataFrame:
 
 
 def render_admin_dashboard() -> None:
-    # 0. Ép giao diện lên trên cùng
-    st.markdown("""<style>.main .block-container { padding-top: 1rem; }</style>""", unsafe_allow_html=True)
+    # 1. CẤU HÌNH GIAO DIỆN (Sát lề, bỏ padding thừa)
+    st.markdown("""
+        <style>
+            .block-container { padding-top: 0rem !important; }
+        </style>
+    """, unsafe_allow_html=True)
 
-    # 1. Ảnh panel sát lề
-    st.image("panel_image.png", use_container_width=True)
+    # 2. ẢNH PANEL (Chỉ 1 ảnh duy nhất ở đầu trang)
+    st.image("https://images.unsplash.com/photo-1523348837708-15d4a09cfacb?q=80&w=2070&auto=format&fit=crop", use_container_width=True)
 
-    # 2. Tiêu đề ngang
-    col_logo, col_title = st.columns([1, 12])
-    with col_logo:
-        st.image("logo.png", width=45)
-    with col_title:
+    # 3. TIÊU ĐỀ (Logo + Chữ ngang hàng)
+    col1, col2 = st.columns([1, 12])
+    with col1:
+        st.image("logo.png", width=45) # Đảm bảo file logo.png cùng thư mục
+    with col2:
         st.markdown("## PHẦN MỀM ĐIỀU TRA THU NHẬP")
+    
+    st.divider() # Đường kẻ mảnh sang trọng
 
-    # 3. Tiêu đề phụ
-    st.subheader("📊 Điều hành thống kê")
-    st.divider()
-
-    # 4. Xử lý dữ liệu
+    # 4. DASHBOARD (Các chỉ số)
     df_ho = read_sheet(SHEETS["danh_sach_ho"], silent=True)
     df_kq = read_sheet(SHEETS["ket_qua"], silent=True)
     work = _df_mau_tien_do(df_ho, df_kq)
@@ -1928,13 +1930,12 @@ def render_admin_dashboard() -> None:
     if not df_kq_num.empty and "ThuBQDauNguoi" in df_kq_num.columns:
         thu_bq = round(float(df_kq_num["ThuBQDauNguoi"].mean()), 1)
 
-    # 5. Dashboard
     with card_container():
         k1, k2, k3, k4 = st.columns(4)
         k1.metric("Tổng hộ", f"{tong_ho:,}")
-        k2.metric("Tiến độ toàn huyện", f"{ty_le}%")
-        k3.metric("Thu nhập bình quân", f"{thu_bq:,.0f}")
-        k4.metric("Tỷ lệ hoàn thành", f"{ty_le}%")
+        k2.metric("Tiến độ", f"{ty_le}%")
+        k3.metric("Thu nhập BQ", f"{thu_bq:,.0f}")
+        k4.metric("Hoàn thành", f"{ty_le}%")
 
     if work.empty or "Xa" not in work.columns:
         st.info("Chưa có dữ liệu hộ mẫu — tải Excel và chọn mẫu tại menu **Hệ thống**.")
