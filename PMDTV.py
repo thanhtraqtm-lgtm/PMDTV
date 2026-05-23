@@ -83,23 +83,44 @@ NAVY_PRIMARY = "#0d2137"
 NAVY_ACCENT = "#1a4a7a"
 NAVY_LIGHT = "#e8eef5"
 def render_header(title=""):
-    # CHỈ CẦN DÒNG NÀY ĐỂ HIỆN ẢNH
-    if "header_rendered" not in st.session_state:
-        # Đường dẫn tới file ảnh trong folder 'image' trên GitHub
-        st.image("image/panel.png", use_container_width=True)
-        st.session_state.header_rendered = True
-
+    # Mở thẻ div bao bọc khối Sticky
+    st.markdown('<div class="sticky-header">', unsafe_allow_html=True)
+    
+    # Hiển thị ảnh
+    st.image("image/panel.png", use_container_width=True)
+    
     # Tiêu đề trang
     st.markdown(f'''
-        <div class="dash-header">
-            <h1>{title}</h1>
+        <div class="dash-header" style="margin-top: -10px; border-radius: 0 0 10px 10px;">
+            <h1 style="font-size: 1.2rem; margin: 0;">{title}</h1>
         </div>
     ''', unsafe_allow_html=True)
+    
+    # Đóng thẻ div sticky-header (Dòng này cực kỳ quan trọng)
+    st.markdown('</div>', unsafe_allow_html=True)
 def apply_custom_style() -> None:
-    """Giao diện Navy chủ đạo — bo góc, đổ bóng, tối giản."""
+    """Giao diện Navy chủ đạo — bo góc, đổ bóng, tối giản, cố định header."""
     st.markdown(
         f"""
         <style>
+        /* Cố định Header */
+        .sticky-header {{
+            position: -webkit-sticky;
+            position: sticky;
+            top: -1px;
+            z-index: 999;
+            background: #f4f7fb;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }}
+        
+        /* Tự động dọn dẹp khoảng trắng thừa của st.divider() trên toàn app */
+        hr {{ 
+            margin: 5px 0 !important; 
+            border: 0 !important; 
+            border-top: 1px solid #e0e0e0 !important; 
+        }}
+        
         :root {{
             --navy: {NAVY_PRIMARY};
             --navy-accent: {NAVY_ACCENT};
@@ -112,51 +133,25 @@ def apply_custom_style() -> None:
             background-color: {NAVY_LIGHT};
             border-right: 1px solid #c5d0de;
         }}
-        /* Cấu hình cho ảnh banner panel.png */
-        .banner-nongthon {{
-            width: 100%;
-            border-radius: 10px;
-            margin-bottom: 1rem;
-            box-shadow: 0 4px 12px rgba(13, 33, 55, 0.15);
-            border: 1px solid #e2e8f0;
-            display: block;
-        }}
-        .main-header, .dash-header {{
+        .dash-header {{
             background: linear-gradient(135deg, {NAVY_PRIMARY}, {NAVY_ACCENT});
             color: #fff;
             padding: 1.1rem 1.5rem;
-            border-radius: 10px;
-            margin-bottom: 1rem;
-            box-shadow: 0 4px 14px rgba(13, 33, 55, 0.18);
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }}
         .dash-header h1 {{
             margin: 0;
-            font-size: 1.45rem;
+            font-size: 1.2rem;
             letter-spacing: 0.04em;
             font-weight: 700;
         }}
-        .card-box {{
-            background: #ffffff;
-            border-radius: 10px;
-            padding: 1rem 1.15rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 2px 12px rgba(13, 33, 55, 0.08);
-            border: 1px solid #e2e8f0;
-        }}
-        .canh-bao-qd1099, .canh-bao-vang, .canh-bao-do, .input-loi-do {{
-            padding: 0.65rem 1rem;
-            border-radius: 10px;
-            margin: 0.5rem 0;
-            font-size: 0.92rem;
-        }}
-        .canh-bao-qd1099, .canh-bao-vang {{
-            background: #fff8e1;
-            border-left: 4px solid #f9a825;
-        }}
-        .canh-bao-do, .input-loi-do {{
+        .canh-bao-do {{
             background: #ffebee !important;
             border-left: 4px solid #c62828;
             color: #b71c1c;
+            padding: 0.65rem 1rem;
+            border-radius: 10px;
         }}
         div[data-testid="stMetric"] {{
             background: #fff;
@@ -165,15 +160,10 @@ def apply_custom_style() -> None:
             box-shadow: 0 2px 8px rgba(13, 33, 55, 0.06);
             border: 1px solid #e8edf3;
         }}
-        @media (max-width: 768px) {{
-            .main-header, .dash-header {{ font-size: 1rem; padding: 0.85rem; }}
-            [data-testid="stTabs"] button {{ font-size: 0.85rem; }}
-        }}
         </style>
         """,
         unsafe_allow_html=True,
     )
-
 
 @contextmanager
 def card_container(title: str | None = None):
