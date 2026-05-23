@@ -36,8 +36,7 @@ _GSHEETS_SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
-# --- TRẠM TRUNG CHUYỂN DỮ LIỆU (Đọc 1 lần, dùng muôn nơi) ---
-# --- TRẠM TRUNG CHUYỂN DỮ LIỆU (Đúng cho Google Sheets của bạn) ---
+
 @st.cache_data(ttl=300)
 def load_all_data_sync():
     """Gom tất cả dữ liệu từ Google Sheets vào 1 biến duy nhất."""
@@ -84,17 +83,13 @@ NAVY_PRIMARY = "#0d2137"
 NAVY_ACCENT = "#1a4a7a"
 NAVY_LIGHT = "#e8eef5"
 def render_header(title=""):
-    # Chỉ vẽ banner một lần duy nhất
+    # CHỈ CẦN DÒNG NÀY ĐỂ HIỆN ẢNH
     if "header_rendered" not in st.session_state:
-        # Cách này dùng st.markdown để "bọc" ảnh bằng class banner-nongthon
-        # Bạn thay đường dẫn 'image/panel.png' cho khớp với GitHub của bạn
-        st.markdown(
-            f'<img src="image/panel.png" class="banner-nongthon">', 
-            unsafe_allow_html=True
-        )
+        # Đường dẫn tới file ảnh trong folder 'image' trên GitHub
+        st.image("image/panel.png", use_container_width=True)
         st.session_state.header_rendered = True
 
-    # Tiêu đề trang dùng dash-header đã có CSS đổ bóng/bo góc
+    # Tiêu đề trang
     st.markdown(f'''
         <div class="dash-header">
             <h1>{title}</h1>
@@ -2502,15 +2497,20 @@ def dtv_nhap_phieu():
 # Điều hướng chính
 # ---------------------------------------------------------------------------
 def main():
-    # 1. Gọi trạm dữ liệu (đã nạp sẵn mọi sheet vào biến 'data')
+    # 1. Gọi trạm dữ liệu
     data = load_all_data_sync()
     
-    # 2. Kiểm tra đăng nhập
+    # 2. Kiểm tra đăng nhập (nếu chưa đăng nhập thì dừng lại ở đây)
     if "user" not in st.session_state:
         page_login()
         return
 
-    # 3. Sau khi đăng nhập, các lệnh dưới đây mới chạy
+    # --- ĐOẠN NÀY ĐỂ VẼ BANNER VÀ TIÊU ĐỀ ---
+    # Chỉ gọi render_header khi đã đăng nhập thành công
+    render_header("PHẦN MỀM ĐIỀU TRA THU NHẬP NĂM 2026")
+    # ----------------------------------------
+
+    # 3. Sidebar
     user = st.session_state["user"]
     st.sidebar.markdown(
         f'<div class="main-header"><b>MENU ĐIỀU KHIỂN</b><br><small>{user["ma"]}</small></div>',
