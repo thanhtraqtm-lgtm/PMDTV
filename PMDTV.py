@@ -18,6 +18,7 @@ import plotly.graph_objects as go
 import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
+from streamlit_option_menu import option_menu
 # --- BẮT ĐẦU ĐOẠN CẦN THÊM ---
 try:
     from streamlit_geolocation import streamlit_geolocation
@@ -2458,85 +2459,57 @@ def dtv_nhap_phieu():
 # Điều hướng chính
 # ---------------------------------------------------------------------------
 def main():
-    # 1. Gọi trạm dữ liệu
-    data = load_all_data_sync()
-    
-    # 2. Kiểm tra đăng nhập (nếu chưa đăng nhập thì dừng lại ở đây)
+    # 1. GIAO DIỆN LÊN ĐẦU TIÊN
+    apply_custom_style()
+    render_header()
+
+    # 2. TẢI DỮ LIỆU
+    with st.spinner("Đang tải dữ liệu hệ thống..."):
+        data = load_all_data_sync()
+
+    # 3. LOGIC ĐĂNG NHẬP
     if "user" not in st.session_state:
         page_login()
         return
 
-    # --- ĐOẠN NÀY ĐỂ VẼ BANNER VÀ TIÊU ĐỀ ---
-    # Chỉ gọi render_header khi đã đăng nhập thành công
-    render_header("PHẦN MỀM ĐIỀU TRA THU NHẬP NĂM 2026")
-    # ----------------------------------------
-
-    # 3. Sidebar
     user = st.session_state["user"]
-    st.sidebar.markdown(
-        f'<div class="main-header"><b>MENU ĐIỀU KHIỂN</b><br><small>{user["ma"]}</small></div>',
-        unsafe_allow_html=True,
+    
+    # MỚI: Menu ngang
+    selected = option_menu(
+        menu_title=None, 
+        options=["Điều hành thống kê", "Hệ thống", "Thông tin hộ", "Tổng hợp"],
+        icons=["bar-chart", "gear", "search", "graph-up"],
+        orientation="horizontal"
     )
+    
+    # Nút Đăng xuất đặt cạnh menu cho gọn
+    if st.button("Đăng xuất"):
+        for k in ("user", "bat_doi_mk"):
+            st.session_state.pop(k, None)
+        st.rerun()
 
-    if user["role"] == "admin" and is_admin(str(user.get("ma", ""))):
-        menu = st.sidebar.radio(
-            "Menu quản trị",
-            [
-                "📊 Điều hành thống kê",
-                "⚙️ Hệ thống",
-                "🔍 Thông tin hộ",
-                "📈 Tổng hợp",
-            ],
-            index=0,
-        )
-        if st.sidebar.button("Đăng xuất"):
-            for k in ("user", "bat_doi_mk"):
-                st.session_state.pop(k, None)
-            st.rerun()
-
-        # 4. TRUYỀN DỮ LIỆU VÀO ĐÂY (Điểm kết nối mới)
+    # 4. LOGIC ĐIỀU HÀNH
+    if user["role"] == "admin":
         routes = {
-            "📊 Điều hành thống kê": lambda: render_admin_dashboard(data["ho"], data["kq"]),
-            "⚙️ Hệ thống": admin_he_thong,
-            "🔍 Thông tin hộ": lambda: admin_thong_tin_ho(data["kq"]),
-            "📈 Tổng hợp": lambda: admin_tong_hop(data["kq"]),
+            "Điều hành thống kê": render_admin_dashboard,
+            "Hệ thống": admin_he_thong,
+            "Thông tin hộ": admin_thong_tin_ho,
+            "Tổng hợp": admin_tong_hop,
         }
-        routes[menu]()
+        
+        if selected in routes:
+            if selected == "Điều hành thống kê":
+                routes[selected](data["ho"], data["kq"])
+            else:
+                routes[selected](data["kq"])
     else:
-        # (Giữ nguyên logic cũ cho Điều tra viên)
+        # Logic cho Điều tra viên
         if st.session_state.get("bat_doi_mk"):
             page_doi_mat_khau()
-            return
-        st.sidebar.markdown("**Chế độ điều tra viên**")
-        st.sidebar.markdown(f"**Mã ĐTV:** {user['ma']}")
-        if user.get("so_ho"):
-            st.sidebar.caption(f"Hộ mẫu cần điều tra: {user['so_ho']}/{SO_HO_MAU}")
-        st.sidebar.caption("Nhập liệu phiếu hỏi thu nhập tại hiện trường")
-
-        ds_dtv = danh_sach_ma_dtv_da_nap()
-        if ds_dtv:
-            ma_moi = st.sidebar.selectbox(
-                "Đổi Mã ĐTV",
-                ds_dtv,
-                index=ds_dtv.index(user["ma"]) if user["ma"] in ds_dtv else 0,
-                key="sidebar_doi_ma_dtv",
-            )
-            if ma_moi != user["ma"] and st.sidebar.button("Áp dụng Mã ĐTV mới"):
-                df_ho = ho_mau_can_dieu_tra(
-                    ho_theo_ma_dtv(read_sheet(SHEETS["danh_sach_ho"]), ma_moi)
-                )
-                st.session_state["user"] = {
-                    "ma": ma_moi,
-                    "role": "dtv",
-                    "ten": f"Điều tra viên — {ma_moi}",
-                    "so_ho": len(df_ho),
-                }
-                st.rerun()
-
-        if st.sidebar.button("Đăng xuất"):
-            del st.session_state["user"]
-            st.rerun()
-        dtv_nhap_phieu()
+        else:
+            st.markdown(f"**Mã ĐTV:** {user['ma']}")
+            # Nếu cần giữ lại tính năng đổi mã ĐTV, bạn dán đoạn selectbox cũ vào đây
+            dtv_nhap_phieu()
 
 if __name__ == "__main__":
     main()
