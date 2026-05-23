@@ -975,7 +975,7 @@ def page_login():
 
 def page_doi_mat_khau():
     user = st.session_state["user"]
-    render_header("🔐 Đổi mật khẩu bắt buộc")
+    render_header()
     mk1 = st.text_input("Mật khẩu mới", type="password")
     mk2 = st.text_input("Xác nhận mật khẩu mới", type="password")
     if st.button("Thay đổi mật khẩu", type="primary", use_container_width=True):
@@ -1022,7 +1022,8 @@ def _bang_tong_hop_thu_nhap(df_kq_xa: pd.DataFrame) -> pd.DataFrame:
     return bang
 
 def render_admin_dashboard(df_ho, df_kq) -> None:
-    st.markdown("""<style>.main .block-container { max-width: 85%; margin: 0 auto; } h2, h3, .stMetric { text-align: center; }</style>""", unsafe_allow_html=True)   
+    # ĐÃ XÓA KHỐI st.markdown("<style>...") ở đây!
+    
     work = _df_mau_tien_do(df_ho, df_kq)
     tong_ho = len(work)
     da_xong = int(work["HoanThanh"].sum()) if "HoanThanh" in work.columns else 0
@@ -1079,7 +1080,7 @@ def render_admin_dashboard(df_ho, df_kq) -> None:
                         st.rerun()
 
 def admin_he_thong():
-    render_header("⚙️ Thiết lập & Nạp dữ liệu hệ thống")
+    render_header()
     tab1, tab2 = st.tabs(["📤 Bước 1: Nạp file Excel hộ nền", "🎯 Bước 2: Chọn mẫu hệ thống (k, r)"])
     with tab1:
         st.write("### Tải lên tệp danh sách Excel")
@@ -1110,7 +1111,7 @@ def admin_he_thong():
                     hien_bang_ngang(df_da_chon)
 
 def admin_thong_tin_ho(df_kq):
-    render_header("🔍 Truy xuất Thông tin chi tiết Phiếu hộ")
+    render_header()
     if df_kq.empty:
         st.info("Chưa ghi nhận bản ghi kết quả nào từ ĐTV.")
         return
@@ -1128,7 +1129,7 @@ def admin_thong_tin_ho(df_kq):
     except: pass
 
 def admin_tong_hop(df_kq):
-    render_header("📈 Tổng hợp dữ liệu Toàn diện")
+    render_header()
     if df_kq.empty:
         st.info("Hệ thống dữ liệu trống.")
         return
