@@ -99,41 +99,49 @@ NAVY_ACCENT = "#1a4a7a"
 NAVY_LIGHT = "#e8eef5"
 
 def render_header(title=""):
+    """
+    Hiển thị ảnh panel sát đỉnh. 
+    Phần dash-header đã được xóa bỏ để giao diện mỏng gọn hơn.
+    """
     st.markdown('<div class="sticky-header">', unsafe_allow_html=True)
     try:
         st.image("image/panel.png", use_container_width=True)
     except:
         pass
-    st.markdown(f'''
-        <div class="dash-header" style="margin-top: -10px; border-radius: 0 0 10px 10px;">
-            <h1 style="font-size: 1.2rem; margin: 0;">{title}</h1>
-        </div>
-    ''', unsafe_allow_html=True)
+    # XÓA HOẶC COMMENT ĐOẠN st.markdown f'''...''' CHỨA dash-header TẠI ĐÂY
     st.markdown('</div>', unsafe_allow_html=True)
 
 def apply_custom_style() -> None:
-    """Giao diện Navy chủ đạo — bo góc, đổ bóng, tối giản, cố định header."""
+    """Giao diện Navy tối giản — ép ảnh lên sát đỉnh và loại bỏ header dày."""
     st.markdown(
         f"""
         <style>
+        /* 1. Ẩn thanh header/toolbar mặc định */
         [data-testid="stHeader"], [data-testid="stToolbar"] {{ display: none !important; }}
+        
+        /* 2. Loại bỏ khoảng cách đỉnh trang của Streamlit */
+        .stAppViewContainer, .block-container {{ padding-top: 0px !important; }}
+        
+        /* 3. Cố định ảnh Panel ở đỉnh */
         .sticky-header {{
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
             width: 100% !important;
             z-index: 99999 !important;
-            background: #f4f7fb !important;
+            background: #ffffff !important;
         }}
-        .stAppViewContainer {{ padding-top: 0px !important; }}
-        .block-container {{ padding-top: 0px !important; }}
-        .stMain {{ padding-top: 120px !important; }}
-        hr {{ margin: 5px 0 !important; border: 0 !important; border-top: 1px solid #e0e0e0 !important; }}
+
+        /* 4. Đẩy nội dung xuống - CẬP NHẬT: tác động vào cả .main và .stMain */
+        .main, .stMain, [data-testid="stAppViewContainer"] {{ padding-top: 70px !important; }}
+
+        /* 5. ẨN HOÀN TOÀN dash-header (tiêu đề cũ) */
+        .dash-header {{ display: none !important; }}
+        
+        /* Style các thành phần còn lại */
         :root {{ --navy: {NAVY_PRIMARY}; --navy-accent: {NAVY_ACCENT}; --navy-light: {NAVY_LIGHT}; }}
         .stApp {{ background: linear-gradient(165deg, #f4f7fb 0%, #ffffff 55%); }}
         [data-testid="stSidebar"] {{ background-color: {NAVY_LIGHT}; border-right: 1px solid #c5d0de; }}
-        .dash-header {{ background: linear-gradient(135deg, {NAVY_PRIMARY}, {NAVY_ACCENT}); color: #fff; padding: 1.1rem 1.5rem; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
-        .dash-header h1 {{ margin: 0; font-size: 1.2rem; letter-spacing: 0.04em; font-weight: 700; }}
         div[data-testid="stMetric"] {{ background: #fff; padding: 0.65rem 0.85rem; border-radius: 10px; box-shadow: 0 2px 8px rgba(13, 33, 55, 0.06); border: 1px solid #e8edf3; }}
         .card-box {{ background: #ffffff; padding: 1.25rem; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); border: 1px solid #eef2f6; margin-bottom: 1rem; }}
         .input-loi-do {{ color: #c62828; font-size: 0.85rem; margin: 2px 0 0; font-weight: 500; }}
@@ -1219,7 +1227,14 @@ def main():
             st.session_state.clear()
             st.rerun()
         
-        render_header(f"Trung tâm Chỉ huy ➔ {menu}")
+        # --- CÁCH SỬA: BỎ KHUNG DASH-HEADER DÀY ---
+        # Thay vì truyền menu vào render_header(), ta để trống để nó chỉ hiển thị ảnh
+        render_header() 
+        
+        # Hiển thị tên menu dạng chữ gọn gàng bên dưới ảnh panel
+        st.markdown(f"### ➔ {menu}")
+        
+        # Sau đó giữ nguyên các lệnh if/elif bên dưới của bạn
         if menu == "📊 Điều hành thống kê": render_admin_dashboard(data["ho"], data["kq"])
         elif menu == "⚙️ Hệ thống": admin_he_thong()
         elif menu == "🔍 Thông tin hộ": admin_thong_tin_ho(data["kq"])
