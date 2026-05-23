@@ -1930,20 +1930,7 @@ def render_admin_dashboard(df_ho, df_kq) -> None:
                 align-items: center;
             }
         </style>
-    """, unsafe_allow_html=True)
-
-    # Dán link Banner vào đây
-    st.image("https://img.tripi.vn/cdn-cgi/image/width=700,height=700/https://gcs.tripi.vn/public-tripi/tripi-feed/img/478997wRW/anh-mo-ta.png", use_container_width=True)
-
-    # Bố cục logo và tiêu đề
-    col1, col2 = st.columns([1, 12])
-    with col1:
-        # Dán link Logo vào đây
-        st.image("https://cdn-icons-png.flaticon.com/512/2904/2904975.png", width=45)
-    with col2:
-        st.markdown("## PHẦN MỀM ĐIỀU TRA THU NHẬP")
-    
-    st.divider() # Đường kẻ mảnh sang trọng
+    """, unsafe_allow_html=True)   
 
     # 4. DASHBOARD (Các chỉ số)
     # LƯU Ý: Không dùng read_sheet ở đây nữa, dùng tham số df_ho, df_kq truyền vào từ main
