@@ -36,6 +36,27 @@ _GSHEETS_SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
+# --- TRẠM TRUNG CHUYỂN DỮ LIỆU (Đọc 1 lần, dùng muôn nơi) ---
+# --- TRẠM TRUNG CHUYỂN DỮ LIỆU (Đúng cho Google Sheets của bạn) ---
+@st.cache_data(ttl=300)
+def load_all_data_sync():
+    """Gom tất cả dữ liệu từ Google Sheets vào 1 biến duy nhất."""
+    return {
+        "ho": read_sheet(SHEETS["danh_sach_ho"], silent=True),
+        "kq": read_sheet(SHEETS["ket_qua"], silent=True),
+        "dtv": read_sheet(SHEETS["danh_sach_dtv"], silent=True),
+        "acc": read_sheet(SHEETS["account"], silent=True)
+    }
+
+def get_master_df(data):
+    """
+    Kết hợp 5 sheet thành 1 bảng Master duy nhất.
+    """
+    df = data['DanhSachHo'].merge(data['KetQua'], on='MaHo', how='left')
+    df = df.merge(data['PhanCong'], on='MaHo', how='left')
+    df = df.merge(data['DanhSachĐTV'], on='MaDTV', how='left')
+    return df
+
 
 @st.cache_resource
 def _gspread_client():
@@ -63,30 +84,22 @@ NAVY_PRIMARY = "#0d2137"
 NAVY_ACCENT = "#1a4a7a"
 NAVY_LIGHT = "#e8eef5"
 def render_header(title=""):
-    # Sử dụng session_state để đánh dấu đã vẽ banner chưa
+    # Chỉ vẽ banner một lần duy nhất
     if "header_rendered" not in st.session_state:
-        # Lấy thông tin user
-        user = st.session_state.get("user", {})
-        is_admin = user.get("role") == 'admin'
-        
-        # Vẽ banner và CSS - CHỈ CHẠY LẦN ĐẦU TIÊN
-        st.markdown(f"""
-            <style>
-                .banner-nongthon {{ width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }}
-            </style>
-            """, unsafe_allow_html=True)
-            
-        if is_admin:
-            st.markdown("""
-                <img src="https://images.unsplash.com/photo-1523348837708-15d4a09cfacb?auto=format&fit=crop&q=80&w=2070&h=300" class="banner-nongthon">
-            """, unsafe_allow_html=True)
-            
-        # Đánh dấu đã vẽ xong banner
+        # Cách này dùng st.markdown để "bọc" ảnh bằng class banner-nongthon
+        # Bạn thay đường dẫn 'image/panel.png' cho khớp với GitHub của bạn
+        st.markdown(
+            f'<img src="image/panel.png" class="banner-nongthon">', 
+            unsafe_allow_html=True
+        )
         st.session_state.header_rendered = True
 
-    # TIÊU ĐỀ TRANG: Luôn hiện mỗi khi gọi hàm (không nằm trong if)
-    st.markdown(f'<div style="text-align: center; font-weight: bold; background: #f0f2f6; padding: 10px; border-radius: 5px;">{title}</div>', unsafe_allow_html=True)
-        
+    # Tiêu đề trang dùng dash-header đã có CSS đổ bóng/bo góc
+    st.markdown(f'''
+        <div class="dash-header">
+            <h1>{title}</h1>
+        </div>
+    ''', unsafe_allow_html=True)
 def apply_custom_style() -> None:
     """Giao diện Navy chủ đạo — bo góc, đổ bóng, tối giản."""
     st.markdown(
@@ -103,6 +116,15 @@ def apply_custom_style() -> None:
         [data-testid="stSidebar"] {{
             background-color: {NAVY_LIGHT};
             border-right: 1px solid #c5d0de;
+        }}
+        /* Cấu hình cho ảnh banner panel.png */
+        .banner-nongthon {{
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 12px rgba(13, 33, 55, 0.15);
+            border: 1px solid #e2e8f0;
+            display: block;
         }}
         .main-header, .dash-header {{
             background: linear-gradient(135deg, {NAVY_PRIMARY}, {NAVY_ACCENT});
@@ -126,29 +148,19 @@ def apply_custom_style() -> None:
             box-shadow: 0 2px 12px rgba(13, 33, 55, 0.08);
             border: 1px solid #e2e8f0;
         }}
-        .canh-bao-qd1099 {{
-            background: #fff8e1;
-            border-left: 4px solid #f9a825;
-            padding: 0.75rem 1rem;
-            border-radius: 10px;
-            margin: 0.5rem 0 1rem 0;
-            font-size: 0.92rem;
-        }}
-        .canh-bao-vang {{
-            background: #fff8e1;
-            border-left: 4px solid #f9a825;
+        .canh-bao-qd1099, .canh-bao-vang, .canh-bao-do, .input-loi-do {{
             padding: 0.65rem 1rem;
             border-radius: 10px;
             margin: 0.5rem 0;
             font-size: 0.92rem;
+        }}
+        .canh-bao-qd1099, .canh-bao-vang {{
+            background: #fff8e1;
+            border-left: 4px solid #f9a825;
         }}
         .canh-bao-do, .input-loi-do {{
             background: #ffebee !important;
             border-left: 4px solid #c62828;
-            padding: 0.65rem 1rem;
-            border-radius: 10px;
-            margin: 0.5rem 0;
-            font-size: 0.92rem;
             color: #b71c1c;
         }}
         div[data-testid="stMetric"] {{
@@ -1898,7 +1910,7 @@ def _bang_tong_hop_thu_nhap(df_kq_xa: pd.DataFrame) -> pd.DataFrame:
     return bang
 
 
-def render_admin_dashboard() -> None:
+def render_admin_dashboard(df_ho, df_kq) -> None:
     # --- CSS CĂN GIỮA MỌI THỨ ---
     st.markdown("""
         <style>
@@ -1934,8 +1946,7 @@ def render_admin_dashboard() -> None:
     st.divider() # Đường kẻ mảnh sang trọng
 
     # 4. DASHBOARD (Các chỉ số)
-    df_ho = read_sheet(SHEETS["danh_sach_ho"], silent=True)
-    df_kq = read_sheet(SHEETS["ket_qua"], silent=True)
+    # LƯU Ý: Không dùng read_sheet ở đây nữa, dùng tham số df_ho, df_kq truyền vào từ main
     work = _df_mau_tien_do(df_ho, df_kq)
 
     tong_ho = len(work) if not work.empty else 0
@@ -1958,6 +1969,7 @@ def render_admin_dashboard() -> None:
         st.info("Chưa có dữ liệu hộ mẫu — tải Excel và chọn mẫu tại menu **Hệ thống**.")
     else:
         col_trai, col_phai = st.columns(2)
+        # ... [Giữ nguyên phần logic biểu đồ phía sau của bạn ở đây] ...
         with col_trai:
             with card_container("Thu nhập bình quân theo Xã"):
                 if not df_kq_num.empty and "Xa" in df_kq_num.columns and "ThuBQDauNguoi" in df_kq_num.columns:
@@ -2245,9 +2257,12 @@ def admin_tien_do():
     hien_bang_ngang(prog_dtv)
 
 
-def admin_thong_tin_ho():
+def admin_thong_tin_ho(df_kq):
     render_header("🔍 THÔNG TIN HỘ ")
-    df_kq = read_sheet(SHEETS["ket_qua"])
+    
+    # ĐÃ XÓA: df_kq = read_sheet(SHEETS["ket_qua"])
+    # Bây giờ hàm sử dụng trực tiếp df_kq được truyền vào từ main()
+    
     if df_kq.empty:
         st.info("Chưa có phiếu nào được gửi lên hệ thống.")
         return
@@ -2280,9 +2295,12 @@ def admin_thong_tin_ho():
         st.error("⚠️ Phiếu có dấu hiệu vị trí GPS không hợp lệ (đã tô đỏ trên Google Sheets).")
 
 
-def admin_tong_hop():
+def admin_tong_hop(df_kq):
     render_header("📈 Tổng hợp báo cáo")
-    df_kq = read_sheet(SHEETS["ket_qua"])
+    
+    # ĐÃ XÓA: df_kq = read_sheet(SHEETS["ket_qua"])
+    # Hàm bây giờ nhận dữ liệu trực tiếp từ tham số df_kq
+    
     if df_kq.empty:
         st.info("Chưa có dữ liệu kết quả điều tra.")
         return
@@ -2497,7 +2515,10 @@ def dtv_nhap_phieu():
 # Điều hướng chính
 # ---------------------------------------------------------------------------
 def main():
-    # Kiểm tra đăng nhập
+    # 1. Gọi trạm dữ liệu (đã nạp sẵn mọi sheet vào biến 'data')
+    data = load_all_data_sync()
+    
+    # 2. Kiểm tra đăng nhập
     if "user" not in st.session_state:
         page_login()
         return
@@ -2525,14 +2546,16 @@ def main():
                 st.session_state.pop(k, None)
             st.rerun()
 
+        # 4. TRUYỀN DỮ LIỆU VÀO ĐÂY (Điểm kết nối mới)
         routes = {
-            "📊 Điều hành thống kê": render_admin_dashboard,
+            "📊 Điều hành thống kê": lambda: render_admin_dashboard(data["ho"], data["kq"]),
             "⚙️ Hệ thống": admin_he_thong,
-            "🔍 Thông tin hộ": admin_thong_tin_ho,
-            "📈 Tổng hợp": admin_tong_hop,
+            "🔍 Thông tin hộ": lambda: admin_thong_tin_ho(data["kq"]),
+            "📈 Tổng hợp": lambda: admin_tong_hop(data["kq"]),
         }
         routes[menu]()
     else:
+        # (Giữ nguyên logic cũ cho Điều tra viên)
         if st.session_state.get("bat_doi_mk"):
             page_doi_mat_khau()
             return
@@ -2566,7 +2589,6 @@ def main():
             del st.session_state["user"]
             st.rerun()
         dtv_nhap_phieu()
-
 
 if __name__ == "__main__":
     main()
