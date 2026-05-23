@@ -37,26 +37,6 @@ _GSHEETS_SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-@st.cache_data(ttl=300)
-def load_all_data_sync():
-    """Gom tất cả dữ liệu từ Google Sheets vào 1 biến duy nhất."""
-    return {
-        "ho": read_sheet(SHEETS["danh_sach_ho"], silent=True),
-        "kq": read_sheet(SHEETS["ket_qua"], silent=True),
-        "dtv": read_sheet(SHEETS["danh_sach_dtv"], silent=True),
-        "acc": read_sheet(SHEETS["account"], silent=True)
-    }
-
-def get_master_df(data):
-    """
-    Kết hợp 5 sheet thành 1 bảng Master duy nhất.
-    """
-    df = data['DanhSachHo'].merge(data['KetQua'], on='MaHo', how='left')
-    df = df.merge(data['PhanCong'], on='MaHo', how='left')
-    df = df.merge(data['DanhSachĐTV'], on='MaDTV', how='left')
-    return df
-
-
 @st.cache_resource
 def _gspread_client():
     # Đọc trực tiếp từ "két sắt" của Streamlit
@@ -83,58 +63,110 @@ NAVY_PRIMARY = "#0d2137"
 NAVY_ACCENT = "#1a4a7a"
 NAVY_LIGHT = "#e8eef5"
 def render_header(title=""):
-    # Mở thẻ div bao bọc khối Sticky
-    st.markdown('<div class="sticky-header">', unsafe_allow_html=True)
-    
-    # Hiển thị ảnh
-    st.image("image/panel.png", use_container_width=True)
-    
-    # Tiêu đề trang
-    st.markdown(f'''
-        <div class="dash-header" style="margin-top: -10px; border-radius: 0 0 10px 10px;">
-            <h1 style="font-size: 1.2rem; margin: 0;">{title}</h1>
-        </div>
-    ''', unsafe_allow_html=True)
-    
-    # Đóng thẻ div sticky-header (Dòng này cực kỳ quan trọng)
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Sử dụng session_state để đánh dấu đã vẽ banner chưa
+    if "header_rendered" not in st.session_state:
+        # Lấy thông tin user
+        user = st.session_state.get("user", {})
+        is_admin = user.get("role") == 'admin'
+        
+        # Vẽ banner và CSS - CHỈ CHẠY LẦN ĐẦU TIÊN
+        st.markdown(f"""
+            <style>
+                .banner-nongthon {{ width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }}
+            </style>
+            """, unsafe_allow_html=True)
+            
+        if is_admin:
+            st.markdown("""
+                <img src="https://images.unsplash.com/photo-1523348837708-15d4a09cfacb?auto=format&fit=crop&q=80&w=2070&h=300" class="banner-nongthon">
+            """, unsafe_allow_html=True)
+            
+        # Đánh dấu đã vẽ xong banner
+        st.session_state.header_rendered = True
+
+    # TIÊU ĐỀ TRANG: Luôn hiện mỗi khi gọi hàm (không nằm trong if)
+    st.markdown(f'<div style="text-align: center; font-weight: bold; background: #f0f2f6; padding: 10px; border-radius: 5px;">{title}</div>', unsafe_allow_html=True)
+        
 def apply_custom_style() -> None:
-    """Giao diện Navy chủ đạo — bo góc, đổ bóng, tối giản, cố định header."""
+    """Giao diện Navy chủ đạo — bo góc, đổ bóng, tối giản."""
     st.markdown(
         f"""
         <style>
-        /* 1. Ẩn thanh header và toolbar mặc định của Streamlit */
-        [data-testid="stHeader"], [data-testid="stToolbar"] {{ display: none !important; }}
-
-        /* 2. Ép Banner dính sát đỉnh màn hình */
-        .sticky-header {{
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            z-index: 99999 !important;
-            background: #f4f7fb !important;
+        :root {{
+            --navy: {NAVY_PRIMARY};
+            --navy-accent: {NAVY_ACCENT};
+            --navy-light: {NAVY_LIGHT};
         }}
-
-        /* 3. Loại bỏ khoảng trống thừa (1.5 phân) của Streamlit */
-        .stAppViewContainer {{ padding-top: 0px !important; }}
-        .block-container {{ padding-top: 0px !important; }}
-
-        /* 4. Đẩy nội dung chính xuống dưới Banner (điều chỉnh 100px-120px tùy độ cao banner) */
-        .stMain {{ padding-top: 100px !important; }}
-
-        /* Các style cũ của bạn giữ nguyên bên dưới */
-        hr {{ margin: 5px 0 !important; border: 0 !important; border-top: 1px solid #e0e0e0 !important; }}
-        :root {{ --navy: {NAVY_PRIMARY}; --navy-accent: {NAVY_ACCENT}; --navy-light: {NAVY_LIGHT}; }}
-        .stApp {{ background: linear-gradient(165deg, #f4f7fb 0%, #ffffff 55%); }}
-        [data-testid="stSidebar"] {{ background-color: {NAVY_LIGHT}; border-right: 1px solid #c5d0de; }}
-        .dash-header {{ background: linear-gradient(135deg, {NAVY_PRIMARY}, {NAVY_ACCENT}); color: #fff; padding: 1.1rem 1.5rem; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
-        .dash-header h1 {{ margin: 0; font-size: 1.2rem; letter-spacing: 0.04em; font-weight: 700; }}
-        div[data-testid="stMetric"] {{ background: #fff; padding: 0.65rem 0.85rem; border-radius: 10px; box-shadow: 0 2px 8px rgba(13, 33, 55, 0.06); border: 1px solid #e8edf3; }}
+        .stApp {{
+            background: linear-gradient(165deg, #f4f7fb 0%, #ffffff 55%);
+        }}
+        [data-testid="stSidebar"] {{
+            background-color: {NAVY_LIGHT};
+            border-right: 1px solid #c5d0de;
+        }}
+        .main-header, .dash-header {{
+            background: linear-gradient(135deg, {NAVY_PRIMARY}, {NAVY_ACCENT});
+            color: #fff;
+            padding: 1.1rem 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 14px rgba(13, 33, 55, 0.18);
+        }}
+        .dash-header h1 {{
+            margin: 0;
+            font-size: 1.45rem;
+            letter-spacing: 0.04em;
+            font-weight: 700;
+        }}
+        .card-box {{
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 1rem 1.15rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 12px rgba(13, 33, 55, 0.08);
+            border: 1px solid #e2e8f0;
+        }}
+        .canh-bao-qd1099 {{
+            background: #fff8e1;
+            border-left: 4px solid #f9a825;
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            margin: 0.5rem 0 1rem 0;
+            font-size: 0.92rem;
+        }}
+        .canh-bao-vang {{
+            background: #fff8e1;
+            border-left: 4px solid #f9a825;
+            padding: 0.65rem 1rem;
+            border-radius: 10px;
+            margin: 0.5rem 0;
+            font-size: 0.92rem;
+        }}
+        .canh-bao-do, .input-loi-do {{
+            background: #ffebee !important;
+            border-left: 4px solid #c62828;
+            padding: 0.65rem 1rem;
+            border-radius: 10px;
+            margin: 0.5rem 0;
+            font-size: 0.92rem;
+            color: #b71c1c;
+        }}
+        div[data-testid="stMetric"] {{
+            background: #fff;
+            padding: 0.65rem 0.85rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(13, 33, 55, 0.06);
+            border: 1px solid #e8edf3;
+        }}
+        @media (max-width: 768px) {{
+            .main-header, .dash-header {{ font-size: 1rem; padding: 0.85rem; }}
+            [data-testid="stTabs"] button {{ font-size: 0.85rem; }}
+        }}
         </style>
         """,
         unsafe_allow_html=True,
     )
+
 
 @contextmanager
 def card_container(title: str | None = None):
@@ -1866,7 +1898,7 @@ def _bang_tong_hop_thu_nhap(df_kq_xa: pd.DataFrame) -> pd.DataFrame:
     return bang
 
 
-def render_admin_dashboard(df_ho, df_kq) -> None:
+def render_admin_dashboard() -> None:
     # --- CSS CĂN GIỮA MỌI THỨ ---
     st.markdown("""
         <style>
@@ -1886,10 +1918,24 @@ def render_admin_dashboard(df_ho, df_kq) -> None:
                 align-items: center;
             }
         </style>
-    """, unsafe_allow_html=True)   
+    """, unsafe_allow_html=True)
+
+    # Dán link Banner vào đây
+    st.image("https://img.tripi.vn/cdn-cgi/image/width=700,height=700/https://gcs.tripi.vn/public-tripi/tripi-feed/img/478997wRW/anh-mo-ta.png", use_container_width=True)
+
+    # Bố cục logo và tiêu đề
+    col1, col2 = st.columns([1, 12])
+    with col1:
+        # Dán link Logo vào đây
+        st.image("https://cdn-icons-png.flaticon.com/512/2904/2904975.png", width=45)
+    with col2:
+        st.markdown("## PHẦN MỀM ĐIỀU TRA THU NHẬP")
+    
+    st.divider() # Đường kẻ mảnh sang trọng
 
     # 4. DASHBOARD (Các chỉ số)
-    # LƯU Ý: Không dùng read_sheet ở đây nữa, dùng tham số df_ho, df_kq truyền vào từ main
+    df_ho = read_sheet(SHEETS["danh_sach_ho"], silent=True)
+    df_kq = read_sheet(SHEETS["ket_qua"], silent=True)
     work = _df_mau_tien_do(df_ho, df_kq)
 
     tong_ho = len(work) if not work.empty else 0
@@ -1912,7 +1958,6 @@ def render_admin_dashboard(df_ho, df_kq) -> None:
         st.info("Chưa có dữ liệu hộ mẫu — tải Excel và chọn mẫu tại menu **Hệ thống**.")
     else:
         col_trai, col_phai = st.columns(2)
-        # ... [Giữ nguyên phần logic biểu đồ phía sau của bạn ở đây] ...
         with col_trai:
             with card_container("Thu nhập bình quân theo Xã"):
                 if not df_kq_num.empty and "Xa" in df_kq_num.columns and "ThuBQDauNguoi" in df_kq_num.columns:
@@ -2200,12 +2245,9 @@ def admin_tien_do():
     hien_bang_ngang(prog_dtv)
 
 
-def admin_thong_tin_ho(df_kq):
+def admin_thong_tin_ho():
     render_header("🔍 THÔNG TIN HỘ ")
-    
-    # ĐÃ XÓA: df_kq = read_sheet(SHEETS["ket_qua"])
-    # Bây giờ hàm sử dụng trực tiếp df_kq được truyền vào từ main()
-    
+    df_kq = read_sheet(SHEETS["ket_qua"])
     if df_kq.empty:
         st.info("Chưa có phiếu nào được gửi lên hệ thống.")
         return
@@ -2238,12 +2280,9 @@ def admin_thong_tin_ho(df_kq):
         st.error("⚠️ Phiếu có dấu hiệu vị trí GPS không hợp lệ (đã tô đỏ trên Google Sheets).")
 
 
-def admin_tong_hop(df_kq):
+def admin_tong_hop():
     render_header("📈 Tổng hợp báo cáo")
-    
-    # ĐÃ XÓA: df_kq = read_sheet(SHEETS["ket_qua"])
-    # Hàm bây giờ nhận dữ liệu trực tiếp từ tham số df_kq
-    
+    df_kq = read_sheet(SHEETS["ket_qua"])
     if df_kq.empty:
         st.info("Chưa có dữ liệu kết quả điều tra.")
         return
@@ -2458,20 +2497,12 @@ def dtv_nhap_phieu():
 # Điều hướng chính
 # ---------------------------------------------------------------------------
 def main():
-    # 1. Gọi trạm dữ liệu
-    data = load_all_data_sync()
-    
-    # 2. Kiểm tra đăng nhập (nếu chưa đăng nhập thì dừng lại ở đây)
+    # Kiểm tra đăng nhập
     if "user" not in st.session_state:
         page_login()
         return
 
-    # --- ĐOẠN NÀY ĐỂ VẼ BANNER VÀ TIÊU ĐỀ ---
-    # Chỉ gọi render_header khi đã đăng nhập thành công
-    render_header("PHẦN MỀM ĐIỀU TRA THU NHẬP NĂM 2026")
-    # ----------------------------------------
-
-    # 3. Sidebar
+    # 3. Sau khi đăng nhập, các lệnh dưới đây mới chạy
     user = st.session_state["user"]
     st.sidebar.markdown(
         f'<div class="main-header"><b>MENU ĐIỀU KHIỂN</b><br><small>{user["ma"]}</small></div>',
@@ -2494,16 +2525,14 @@ def main():
                 st.session_state.pop(k, None)
             st.rerun()
 
-        # 4. TRUYỀN DỮ LIỆU VÀO ĐÂY (Điểm kết nối mới)
         routes = {
-            "📊 Điều hành thống kê": lambda: render_admin_dashboard(data["ho"], data["kq"]),
+            "📊 Điều hành thống kê": render_admin_dashboard,
             "⚙️ Hệ thống": admin_he_thong,
-            "🔍 Thông tin hộ": lambda: admin_thong_tin_ho(data["kq"]),
-            "📈 Tổng hợp": lambda: admin_tong_hop(data["kq"]),
+            "🔍 Thông tin hộ": admin_thong_tin_ho,
+            "📈 Tổng hợp": admin_tong_hop,
         }
         routes[menu]()
     else:
-        # (Giữ nguyên logic cũ cho Điều tra viên)
         if st.session_state.get("bat_doi_mk"):
             page_doi_mat_khau()
             return
@@ -2537,6 +2566,7 @@ def main():
             del st.session_state["user"]
             st.rerun()
         dtv_nhap_phieu()
+
 
 if __name__ == "__main__":
     main()
