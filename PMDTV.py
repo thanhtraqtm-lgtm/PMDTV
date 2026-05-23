@@ -500,15 +500,16 @@ def doc_excel_danh_sach_ho(
     # 2. Gọi hàm chuẩn hóa (đảm bảo hàm chuan_hoa_ten_cot_df đã hỗ trợ tên mới)
     df = chuan_hoa_ten_cot_df(raw)
     
-    # 3. Định nghĩa tên hiển thị để báo lỗi cho người dùng
-    ten_vi = {
+    # Đảm bảo ten_vi luôn tồn tại trong bộ nhớ của app
+if "ten_vi" not in st.session_state:
+    st.session_state.ten_vi = {
         "Huyen": "Mã TKCS",
         "Xa": "Xã",
         "DiaBan": "Tên địa bàn",
         "MaDiaBan": "Mã địa bàn",
         "HoSo": "Hộ số",
         "TenChuHo": "Tên chủ hộ",
-        "MaDTV": "Mã ĐTV",
+        "MaDTV": "Mã ĐTV"
     }
     
     # 4. Xác định danh sách cột cần thiết
@@ -516,9 +517,15 @@ def doc_excel_danh_sach_ho(
     
     # 5. Kiểm tra các cột bị thiếu
     thieu: list[str] = []
+    
+    # Sử dụng st.session_state.ten_vi thay vì ten_vi trực tiếp
+    # Nếu chưa có session_state thì lấy từ biến toàn cục hoặc khởi tạo dự phòng
+    config_labels = st.session_state.get("ten_vi", {})
+    
     for canon in cols_can:
         if canon not in df.columns:
-            thieu.append(ten_vi.get(canon, canon))
+            # Dùng .get() để lấy tên tiếng Việt, nếu không có thì lấy chính tên cột
+            thieu.append(config_labels.get(canon, canon))
             
     if thieu:
         return None, thieu
@@ -2021,11 +2028,10 @@ def render_admin_dashboard() -> None:
                         st.plotly_chart(fig2, use_container_width=True)
 
         with card_container("Tổng hợp nhanh thu nhập"):
-            # Lấy nhãn chuẩn từ từ điển ten_vi
-            label_xa = ten_vi["Xa"]
-            label_tkcs = ten_vi["Huyen"] # Đây chính là "Mã TKCS" bạn đã đổi
-            
-            # Sửa selectbox: dùng label_xa và label_tkcs
+            # Tự động lấy nhãn "TKCS" vì bạn đã sửa trong session_state
+            label_xa = st.session_state.ten_vi["Xa"]
+            label_tkcs = st.session_state.ten_vi["Huyen"] # Trả về "TKCS"
+                    
             xa_tb = st.selectbox(
                 f"{label_xa} (bảng tổng hợp)",
                 [f"Toàn bộ {label_tkcs}"] + sorted(work["Xa"].astype(str).str.strip().unique().tolist()),
@@ -2238,7 +2244,7 @@ def admin_tien_do():
 
 
 def admin_thong_tin_ho():
-    render_header("🔍 Thông tin hộ (soi chi tiết)")
+    render_header("🔍 THÔNG TIN HỘ ")
     df_kq = read_sheet(SHEETS["ket_qua"])
     if df_kq.empty:
         st.info("Chưa có phiếu nào được gửi lên hệ thống.")
