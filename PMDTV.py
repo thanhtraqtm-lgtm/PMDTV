@@ -484,51 +484,53 @@ def hien_bang_ngang(df: pd.DataFrame) -> None:
     """Hiển thị bảng dữ liệu (mỗi bản ghi = một hàng)."""
     hien_dataframe_an_toan(df)
 
-
-def doc_excel_danh_sach_ho(
-    file, *, can_madtv: bool = False
-) -> tuple[pd.DataFrame | None, list[str]]:
+def doc_excel_danh_sach_ho(file, *, can_madtv: bool = False) -> tuple[pd.DataFrame | None, list[str]]:
     """
-    Đọc Excel danh sách hộ, khớp cột linh hoạt (có dấu / không dấu).
+    Đọc Excel danh sách hộ, khớp cột linh hoạt.
     Trả về (DataFrame các cột chuẩn, danh sách tên cột thiếu bằng tiếng Việt).
-    can_madtv=True: bắt buộc có cột Mã ĐTV.
     """
-    # 1. Đọc file với định dạng chuỗi
+    # 1. Đọc file
     raw = pd.read_excel(file, dtype=str)
     raw.columns = [str(c).strip() for c in raw.columns]
     
-    # 2. Gọi hàm chuẩn hóa (đảm bảo hàm chuan_hoa_ten_cot_df đã hỗ trợ tên mới)
+    # 2. Chuẩn hóa tên cột
     df = chuan_hoa_ten_cot_df(raw)
     
-    # Đảm bảo ten_vi luôn tồn tại trong bộ nhớ của app
-if "ten_vi" not in st.session_state:
-    st.session_state.ten_vi = {
-        "Huyen": "Mã TKCS",
-        "Xa": "Xã",
-        "DiaBan": "Tên địa bàn",
-        "MaDiaBan": "Mã địa bàn",
-        "HoSo": "Hộ số",
-        "TenChuHo": "Tên chủ hộ",
-        "MaDTV": "Mã ĐTV"
-    }
+    # 3. Đảm bảo session_state ten_vi tồn tại
+    if "ten_vi" not in st.session_state:
+        st.session_state.ten_vi = {
+            "Huyen": "Mã TKCS",
+            "Xa": "Xã",
+            "DiaBan": "Tên địa bàn",
+            "MaDiaBan": "Mã địa bàn",
+            "HoSo": "Hộ số",
+            "TenChuHo": "Tên chủ hộ",
+            "MaDTV": "Mã ĐTV"
+        }
     
     # 4. Xác định danh sách cột cần thiết
+    # Đã sửa lỗi cộng chuỗi thiếu ở dòng cũ
     cols_can = list(COL_HO) + (["MaDTV"] if can_madtv else [])
     
     # 5. Kiểm tra các cột bị thiếu
     thieu: list[str] = []
-    
-    # Sử dụng st.session_state.ten_vi thay vì ten_vi trực tiếp
-    # Nếu chưa có session_state thì lấy từ biến toàn cục hoặc khởi tạo dự phòng
-    config_labels = st.session_state.get("ten_vi", {})
+    config_labels = st.session_state.ten_vi
     
     for canon in cols_can:
         if canon not in df.columns:
             # Dùng .get() để lấy tên tiếng Việt, nếu không có thì lấy chính tên cột
             thieu.append(config_labels.get(canon, canon))
             
+    # Trả về lỗi nếu có cột thiếu
     if thieu:
         return None, thieu
+    
+    # 6. Chọn cột đầu ra và xử lý giá trị trống
+    out_cols = list(cols_can)
+    if "DiaChi" in df.columns and "DiaChi" not in out_cols:
+        out_cols.append("DiaChi")
+        
+    return df[out_cols].fillna(""), []
     
     # 6. Chọn cột đầu ra và xử lý giá trị trống
     out_cols = list(cols_can)
