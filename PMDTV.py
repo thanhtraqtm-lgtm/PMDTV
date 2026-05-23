@@ -1219,28 +1219,31 @@ def main():
         page_login()
         return
 
+    # 1. Gọi CSS và Header ở ngoài cùng, không phụ thuộc vào Role
+    apply_custom_style()
+    render_header() 
+
     user = st.session_state["user"]
     st.sidebar.markdown(f'<b>💻 BÀN LÀM VIỆC</b><br><small>Tài khoản: {user["ma"]}</small>', unsafe_allow_html=True)
 
+    # 2. Xử lý logic theo Role
     if user["role"] == "admin" and is_admin(str(user.get("ma", ""))):
         menu = st.sidebar.radio("Hệ thống quản trị", ["📊 Điều hành thống kê", "⚙️ Hệ thống", "🔍 Thông tin hộ", "📈 Tổng hợp"])
         if st.sidebar.button("Đăng xuất Hệ thống", use_container_width=True):
             st.session_state.clear()
             st.rerun()
         
-        # --- CÁCH SỬA: BỎ KHUNG DASH-HEADER DÀY ---
-        # Thay vì truyền menu vào render_header(), ta để trống để nó chỉ hiển thị ảnh
-        render_header() 
-        
-        # Hiển thị tên menu dạng chữ gọn gàng bên dưới ảnh panel
+        # Tiêu đề menu hiện ở đây
         st.markdown(f"### ➔ {menu}")
         
-        # Sau đó giữ nguyên các lệnh if/elif bên dưới của bạn
         if menu == "📊 Điều hành thống kê": render_admin_dashboard(data["ho"], data["kq"])
         elif menu == "⚙️ Hệ thống": admin_he_thong()
         elif menu == "🔍 Thông tin hộ": admin_thong_tin_ho(data["kq"])
         elif menu == "📈 Tổng hợp": admin_tong_hop(data["kq"])
+        
     else:
+        # Nếu là ĐTV, vẫn giữ banner nhưng hiện tiêu đề khác
+        st.markdown("### 📝 Giao diện Phiếu thu thập")
         if st.sidebar.button("Đăng xuất Khỏi hệ thống", use_container_width=True):
             st.session_state.clear()
             st.rerun()
