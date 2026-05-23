@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 PMDTV.py — Phiếu hỏi điều tra thu nhập năm 2026 (Streamlit + Google Sheets).
-Phân quyền: ADMIN | ĐTV (sheet Account + DanhSachHo).
 """
-
 from __future__ import annotations
 
 import io
@@ -14,23 +12,62 @@ from contextlib import contextmanager
 from pathlib import Path
 from datetime import datetime
 from typing import Any
-
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-
+import gspread
+from google.oauth2.service_account import Credentials
+# --- BẮT ĐẦU ĐOẠN CẦN THÊM ---
 try:
     from streamlit_geolocation import streamlit_geolocation
 except ImportError:
     streamlit_geolocation = None
 
 try:
-    from geopy.distance import geodesic
     from geopy.geocoders import Nominatim
+    from geopy.distance import geodesic
 except ImportError:
-    geodesic = None
     Nominatim = None
+    geodesic = None
+
+# --- 1. CẤU HÌNH KẾT NỐI (DÙNG SECRETS) ---
+_GSHEETS_SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+]
+
+@st.cache_data(ttl=300)
+def load_all_data_sync():
+    """Gom tất cả dữ liệu từ Google Sheets vào 1 biến duy nhất."""
+    return {
+        "ho": read_sheet(SHEETS["danh_sach_ho"], silent=True),
+        "kq": read_sheet(SHEETS["ket_qua"], silent=True),
+        "dtv": read_sheet(SHEETS["danh_sach_dtv"], silent=True),
+        "acc": read_sheet(SHEETS["account"], silent=True)
+    }
+
+def get_master_df(data):
+    """
+    Kết hợp 5 sheet thành 1 bảng Master duy nhất.
+    """
+    df = data['DanhSachHo'].merge(data['KetQua'], on='MaHo', how='left')
+    df = df.merge(data['PhanCong'], on='MaHo', how='left')
+    df = df.merge(data['DanhSachĐTV'], on='MaDTV', how='left')
+    return df
+
+
+@st.cache_resource
+def _gspread_client():
+    # Đọc trực tiếp từ "két sắt" của Streamlit
+    json_key = json.loads(st.secrets["gcp_service_account"]["json"])
+    creds = Credentials.from_service_account_info(json_key, scopes=_GSHEETS_SCOPES)
+    return gspread.authorize(creds)
+
+def _open_spreadsheet():
+    gc = _gspread_client()
+    url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+    return gc.open_by_url(url)
 
 # ---------------------------------------------------------------------------
 # Cấu hình trang & giao diện
@@ -41,108 +78,63 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-@st.cache_data(ttl=600)
-def load_all_data_sync():
-    """Gom tất cả dữ liệu từ Google Sheets vào 1 biến duy nhất."""
-    return {
-        "ho": read_sheet(SHEETS["danh_sach_ho"], silent=True),
-        "kq": read_sheet(SHEETS["ket_qua"], silent=True),
-        "dtv": read_sheet(SHEETS["danh_sach_dtv"], silent=True),
-        "acc": read_sheet(SHEETS["account"], silent=True)
-    }
+
 NAVY_PRIMARY = "#0d2137"
 NAVY_ACCENT = "#1a4a7a"
 NAVY_LIGHT = "#e8eef5"
-def render_header():
-    current_year = datetime.now().year
-    st.markdown(f"""
-        <div style="background: linear-gradient(135deg, {NAVY_PRIMARY}, {NAVY_ACCENT}); color: #fff; padding: 1.5rem; border-radius: 10px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
-            <div style="font-size: 1.8rem; font-weight: 800;">📊 PHIẾU HỎI THU NHẬP HỘ</div>
-            <div style="font-size: 1.1rem; color: #a3c1da; margin-top: 5px;">Thống kê Tỉnh Hưng Yên | Niên độ {current_year}</div>
+def render_header(title=""):
+    # Mở thẻ div bao bọc khối Sticky
+    st.markdown('<div class="sticky-header">', unsafe_allow_html=True)
+    
+    # Hiển thị ảnh
+    st.image("image/panel.png", use_container_width=True)
+    
+    # Tiêu đề trang
+    st.markdown(f'''
+        <div class="dash-header" style="margin-top: -10px; border-radius: 0 0 10px 10px;">
+            <h1 style="font-size: 1.2rem; margin: 0;">{title}</h1>
         </div>
-    """, unsafe_allow_html=True)
-
-
+    ''', unsafe_allow_html=True)
+    
+    # Đóng thẻ div sticky-header (Dòng này cực kỳ quan trọng)
+    st.markdown('</div>', unsafe_allow_html=True)
 def apply_custom_style() -> None:
-    """Giao diện Navy chủ đạo — bo góc, đổ bóng, tối giản."""
+    """Giao diện Navy chủ đạo — bo góc, đổ bóng, tối giản, cố định header."""
     st.markdown(
         f"""
         <style>
-        :root {{
-            --navy: {NAVY_PRIMARY};
-            --navy-accent: {NAVY_ACCENT};
-            --navy-light: {NAVY_LIGHT};
+        /* 1. Ẩn thanh header và toolbar mặc định của Streamlit */
+        [data-testid="stHeader"], [data-testid="stToolbar"] {{ display: none !important; }}
+
+        /* 2. Ép Banner dính sát đỉnh màn hình */
+        .sticky-header {{
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            z-index: 99999 !important;
+            background: #f4f7fb !important;
         }}
-        .stApp {{
-            background: linear-gradient(165deg, #f4f7fb 0%, #ffffff 55%);
-        }}
-        [data-testid="stSidebar"] {{
-            background-color: {NAVY_LIGHT};
-            border-right: 1px solid #c5d0de;
-        }}
-        .main-header, .dash-header {{
-            background: linear-gradient(135deg, {NAVY_PRIMARY}, {NAVY_ACCENT});
-            color: #fff;
-            padding: 1.1rem 1.5rem;
-            border-radius: 10px;
-            margin-bottom: 1rem;
-            box-shadow: 0 4px 14px rgba(13, 33, 55, 0.18);
-        }}
-        .dash-header h1 {{
-            margin: 0;
-            font-size: 1.45rem;
-            letter-spacing: 0.04em;
-            font-weight: 700;
-        }}
-        .card-box {{
-            background: #ffffff;
-            border-radius: 10px;
-            padding: 1rem 1.15rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 2px 12px rgba(13, 33, 55, 0.08);
-            border: 1px solid #e2e8f0;
-        }}
-        .canh-bao-qd1099 {{
-            background: #fff8e1;
-            border-left: 4px solid #f9a825;
-            padding: 0.75rem 1rem;
-            border-radius: 10px;
-            margin: 0.5rem 0 1rem 0;
-            font-size: 0.92rem;
-        }}
-        .canh-bao-vang {{
-            background: #fff8e1;
-            border-left: 4px solid #f9a825;
-            padding: 0.65rem 1rem;
-            border-radius: 10px;
-            margin: 0.5rem 0;
-            font-size: 0.92rem;
-        }}
-        .canh-bao-do, .input-loi-do {{
-            background: #ffebee !important;
-            border-left: 4px solid #c62828;
-            padding: 0.65rem 1rem;
-            border-radius: 10px;
-            margin: 0.5rem 0;
-            font-size: 0.92rem;
-            color: #b71c1c;
-        }}
-        div[data-testid="stMetric"] {{
-            background: #fff;
-            padding: 0.65rem 0.85rem;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(13, 33, 55, 0.06);
-            border: 1px solid #e8edf3;
-        }}
-        @media (max-width: 768px) {{
-            .main-header, .dash-header {{ font-size: 1rem; padding: 0.85rem; }}
-            [data-testid="stTabs"] button {{ font-size: 0.85rem; }}
-        }}
+
+        /* 3. Loại bỏ khoảng trống thừa (1.5 phân) của Streamlit */
+        .stAppViewContainer {{ padding-top: 0px !important; }}
+        .block-container {{ padding-top: 0px !important; }}
+
+        /* 4. Đẩy nội dung chính xuống dưới Banner (điều chỉnh 100px-120px tùy độ cao banner) */
+        .stMain {{ padding-top: 100px !important; }}
+
+        /* Các style cũ của bạn giữ nguyên bên dưới */
+        hr {{ margin: 5px 0 !important; border: 0 !important; border-top: 1px solid #e0e0e0 !important; }}
+        :root {{ --navy: {NAVY_PRIMARY}; --navy-accent: {NAVY_ACCENT}; --navy-light: {NAVY_LIGHT}; }}
+        .stApp {{ background: linear-gradient(165deg, #f4f7fb 0%, #ffffff 55%); }}
+        [data-testid="stSidebar"] {{ background-color: {NAVY_LIGHT}; border-right: 1px solid #c5d0de; }}
+        .dash-header {{ background: linear-gradient(135deg, {NAVY_PRIMARY}, {NAVY_ACCENT}); color: #fff; padding: 1.1rem 1.5rem; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
+        .dash-header h1 {{ margin: 0; font-size: 1.2rem; letter-spacing: 0.04em; font-weight: 700; }}
+        div[data-testid="stMetric"] {{ background: #fff; padding: 0.65rem 0.85rem; border-radius: 10px; box-shadow: 0 2px 8px rgba(13, 33, 55, 0.06); border: 1px solid #e8edf3; }}
         </style>
         """,
         unsafe_allow_html=True,
     )
-
 
 @contextmanager
 def card_container(title: str | None = None):
@@ -164,16 +156,6 @@ SHEETS = {
     "phan_cong": "PhanCong",
     "ket_qua": "KetQua",
 }
-
-@st.cache_data(ttl=600)
-def load_all_data_sync():
-    """Gom tất cả dữ liệu từ Google Sheets vào 1 biến duy nhất."""
-    return {
-        "ho": read_sheet(SHEETS["danh_sach_ho"], silent=True),
-        "kq": read_sheet(SHEETS["ket_qua"], silent=True),
-        "dtv": read_sheet(SHEETS["danh_sach_dtv"], silent=True),
-        "acc": read_sheet(SHEETS["account"], silent=True)
-    }
 
 # --- QĐ 1099 / Phần B: 7 nguồn thu nhập ---
 ADMIN_MA = "ADMIN"
@@ -422,17 +404,40 @@ def chuan_hoa_gia_tri_hien_thi(val: Any) -> Any:
         return val
     s = str(val).strip()
     return "" if s.lower() in ("nan", "none", "<na>") else s
-def lam_sach_df(df: pd.DataFrame) -> pd.DataFrame:
-    """Hàm chuẩn hóa dữ liệu dùng chung."""
+
+
+def chuan_hoa_df_hien_thi(df: pd.DataFrame) -> pd.DataFrame:
+    """DataFrame sạch cho st.dataframe — hàng ngang, không kiểu kỹ thuật."""
+    if df.empty:
+        return df
+    out = df.copy()
+    for c in out.columns:
+        out[c] = out[c].map(chuan_hoa_gia_tri_hien_thi)
+    return out
+
+
+def df_an_toan_hien_thi(df: pd.DataFrame) -> pd.DataFrame:
+    """Chuẩn hóa DataFrame trước hiển thị — giữ nguyên định dạng số."""
     if df is None or df.empty:
         return pd.DataFrame()
+    
     out = df.copy().reset_index(drop=True)
+    
     for c in out.columns:
-        if pd.api.types.is_numeric_dtype(out[c]):
+        # Nếu là cột định danh (MaDTV, HoSo, MaDiaBan), bắt buộc phải là chuỗi
+        if c in ["MaDTV", "HoSo", "MaDiaBan", "DiaBan", "TenChuHo", "Xa"]:
+            out[c] = out[c].fillna("").astype(str).replace({"nan": "", "None": ""})
+        
+        # Nếu là cột số (NhanKhauTT, ThuNhap, v.v.), chỉ điền 0 vào chỗ trống, KHÔNG ép thành chuỗi
+        elif pd.api.types.is_numeric_dtype(out[c]):
             out[c] = pd.to_numeric(out[c], errors="coerce").fillna(0)
+            
+        # Các cột còn lại (Phân loại, v.v.)
         else:
-            out[c] = out[c].fillna("").astype(str).replace({"nan": "", "None": "<NA>"})
+            out[c] = out[c].fillna("").astype(str).replace({"nan": "", "None": ""})
+            
     return out
+
 
 def hien_dataframe_an_toan(df: pd.DataFrame, *, an_index: bool = True) -> None:
     """Hiển thị bảng an toàn trên mobile/desktop — không dùng height."""
@@ -442,35 +447,64 @@ def hien_dataframe_an_toan(df: pd.DataFrame, *, an_index: bool = True) -> None:
     hien = hien_thi_bang(df_an_toan_hien_thi(df))
     st.dataframe(hien, use_container_width=True, hide_index=an_index)
 
-def doc_excel_danh_sach_ho(
-    file, *, can_madtv: bool = False
-) -> tuple[pd.DataFrame | None, list[str]]:
+
+def hien_bang_ngang(df: pd.DataFrame) -> None:
+    """Hiển thị bảng dữ liệu (mỗi bản ghi = một hàng)."""
+    hien_dataframe_an_toan(df)
+
+def doc_excel_danh_sach_ho(file, *, can_madtv: bool = False) -> tuple[pd.DataFrame | None, list[str]]:
     """
-    Đọc Excel danh sách hộ, khớp cột linh hoạt (có dấu / không dấu).
+    Đọc Excel danh sách hộ, khớp cột linh hoạt.
     Trả về (DataFrame các cột chuẩn, danh sách tên cột thiếu bằng tiếng Việt).
-    can_madtv=True: bắt buộc có cột Mã ĐTV (dùng cho nạp thông minh 1.000 hộ).
     """
+    # 1. Đọc file
     raw = pd.read_excel(file, dtype=str)
     raw.columns = [str(c).strip() for c in raw.columns]
+    
+    # 2. Chuẩn hóa tên cột
     df = chuan_hoa_ten_cot_df(raw)
-    thieu: list[str] = []
-    ten_vi = {
-        "Huyen": "Huyện",
-        "Xa": "Xã",
-        "DiaBan": "Địa bàn",
-        "HoSo": "Hộ số",
-        "TenChuHo": "Tên chủ hộ",
-        "MaDTV": "Mã ĐTV",
-    }
+    
+    # 3. Đảm bảo session_state ten_vi tồn tại
+    if "ten_vi" not in st.session_state:
+        st.session_state.ten_vi = {
+            "Huyen": "Mã TKCS",
+            "Xa": "Xã",
+            "DiaBan": "Tên địa bàn",
+            "MaDiaBan": "Mã địa bàn",
+            "HoSo": "Hộ số",
+            "TenChuHo": "Tên chủ hộ",
+            "MaDTV": "Mã ĐTV"
+        }
+    
+    # 4. Xác định danh sách cột cần thiết
+    # Đã sửa lỗi cộng chuỗi thiếu ở dòng cũ
     cols_can = list(COL_HO) + (["MaDTV"] if can_madtv else [])
+    
+    # 5. Kiểm tra các cột bị thiếu
+    thieu: list[str] = []
+    config_labels = st.session_state.ten_vi
+    
     for canon in cols_can:
         if canon not in df.columns:
-            thieu.append(ten_vi.get(canon, canon))
+            # Dùng .get() để lấy tên tiếng Việt, nếu không có thì lấy chính tên cột
+            thieu.append(config_labels.get(canon, canon))
+            
+    # Trả về lỗi nếu có cột thiếu
     if thieu:
         return None, thieu
+    
+    # 6. Chọn cột đầu ra và xử lý giá trị trống
     out_cols = list(cols_can)
     if "DiaChi" in df.columns and "DiaChi" not in out_cols:
         out_cols.append("DiaChi")
+        
+    return df[out_cols].fillna(""), []
+    
+    # 6. Chọn cột đầu ra và xử lý giá trị trống
+    out_cols = list(cols_can)
+    if "DiaChi" in df.columns and "DiaChi" not in out_cols:
+        out_cols.append("DiaChi")
+        
     return df[out_cols].fillna(""), []
 
 
@@ -488,25 +522,19 @@ def danh_sach_ma_dtv_theo_thu_tu(series: pd.Series) -> list[str]:
 
 
 def loc_mau_1000_ho(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
-    """
-    Bước 1 — Danh sách nền: 10 Mã ĐTV đầu tiên trong file Excel;
-    mỗi mã lấy đúng 100 hộ đầu tiên (giữ thứ tự gốc), tối đa 1.000 hộ.
-    """
+    """Bước 1: Nạp toàn bộ danh sách hộ từ file Excel mà không giới hạn số lượng."""
     if df.empty or "MaDTV" not in df.columns:
         return pd.DataFrame(), []
 
     work = df.copy()
     work["MaDTV"] = work["MaDTV"].astype(str).str.strip()
 
+    # Lấy toàn bộ ĐTV có trong file
     tat_ca_dtv = danh_sach_ma_dtv_theo_thu_tu(work["MaDTV"])
-    dtv_10 = tat_ca_dtv[:10]
-    cac_phan: list[pd.DataFrame] = []
-    for ma in dtv_10:
-        cac_phan.append(work[work["MaDTV"] == ma].head(100))
-
-    if not cac_phan:
-        return pd.DataFrame(), []
-    return pd.concat(cac_phan, ignore_index=True), dtv_10
+    
+    # Không dùng .head(10) và .head(100) nữa
+    # Chúng ta trả về toàn bộ dữ liệu
+    return work, tat_ca_dtv
 
 
 def ho_theo_ma_dtv(df_ho: pd.DataFrame, ma_dtv: str) -> pd.DataFrame:
@@ -518,44 +546,53 @@ def ho_theo_ma_dtv(df_ho: pd.DataFrame, ma_dtv: str) -> pd.DataFrame:
 
 
 def lay_danh_sach_nen(df: pd.DataFrame, ma_dtv: str) -> pd.DataFrame:
-    """Bước 1: đúng 100 hộ đầu tiên của Mã ĐTV trong file/sheet (thứ tự gốc)."""
-    return ho_theo_ma_dtv(df, ma_dtv).head(SO_HO_NEN).reset_index(drop=True)
+    """Bước 1: Lấy toàn bộ hộ nền của Mã ĐTV (không cắt giảm)."""
+    # Chỉ cần lọc theo ĐTV, không dùng .head(SO_HO_NEN)
+    return ho_theo_ma_dtv(df, ma_dtv).reset_index(drop=True)
 
 
-def chon_chi_so_mau_tu_nen(n_nen: int, k: int, r: int) -> list[int]:
+def chon_chi_so_mau_tu_nen(n_nen: int, k: int, r: int, so_luong_can_chon: int = 40) -> list[int]:
     """
-    Bước 2: từ n hộ nền, chọn đủ SO_HO_MAU chỉ số.
-    Lấy mẫu hệ thống bước nhảy k từ vị trí r; nếu chưa đủ thì bổ sung tuần tự các hộ còn lại.
+    Bước 2: Từ n hộ nền, chọn đủ số lượng mẫu (mặc định 40).
+    Sử dụng chọn mẫu hệ thống với bước nhảy k, bắt đầu từ r (1-based).
+    Nếu chưa đủ số lượng, bổ sung tuần tự các hộ còn lại.
     """
     if n_nen <= 0 or k < 1 or r < 1:
         return []
 
     picked: list[int] = []
     seen: set[int] = set()
-    pos = r - 1
-    while pos < n_nen and len(picked) < SO_HO_MAU:
+    
+    # 1. Chọn mẫu hệ thống (Nhảy cóc k đơn vị)
+    pos = r - 1  # Chuyển r (1-based) về index (0-based)
+    while pos < n_nen and len(picked) < so_luong_can_chon:
         if pos not in seen:
             picked.append(pos)
             seen.add(pos)
         pos += k
 
-    for i in range(n_nen):
-        if len(picked) >= SO_HO_MAU:
-            break
-        if i not in seen:
-            picked.append(i)
-            seen.add(i)
-
-    return picked[:SO_HO_MAU]
-
+    # 2. Nếu chưa đủ 40 hộ, chọn bù các hộ còn thiếu theo thứ tự
+    if len(picked) < so_luong_can_chon:
+        for i in range(n_nen):
+            if len(picked) >= so_luong_can_chon:
+                break
+            if i not in seen:
+                picked.append(i)
+                seen.add(i)
+                
+    return picked
 
 def gan_phan_loai_ho(df_nen: pd.DataFrame, chi_so_mau: list[int]) -> pd.DataFrame:
-    """Gán cột Phân loại: Mẫu (40) / Dự phòng/Nền (còn lại trong 100 hộ nền)."""
+    """Gán cột Phân loại: Mẫu (40) / Dự phòng (còn lại)."""
     out = df_nen.reset_index(drop=True).copy()
+    
+    # Mặc định tất cả là Dự phòng (PHAN_LOAI_NEN)
     out[COL_PHAN_LOAI] = PHAN_LOAI_NEN
+    
+    # Chỉ gán "Mẫu" cho các vị trí có trong danh sách chỉ số
     for i in chi_so_mau:
         if 0 <= i < len(out):
-            out.loc[out.index[i], COL_PHAN_LOAI] = PHAN_LOAI_MAU
+            out.loc[i, COL_PHAN_LOAI] = PHAN_LOAI_MAU
     return out
 
 
@@ -580,13 +617,26 @@ def ho_mau_can_dieu_tra(df_ho: pd.DataFrame) -> pd.DataFrame:
 def cap_nhat_danh_sach_ho_theo_dtv(
     df_all: pd.DataFrame, ma_dtv: str, df_nen_da_phan_loai: pd.DataFrame
 ) -> pd.DataFrame:
-    """Thay 100 hộ của một Mã ĐTV trong sheet DanhSachHo, giữ nguyên các ĐTV khác."""
+    """
+    Thay thế toàn bộ hộ của một Mã ĐTV trong sheet DanhSachHo bằng dữ liệu đã chọn mẫu, 
+    giữ nguyên các hộ của ĐTV khác.
+    """
     if df_all.empty:
         return df_nen_da_phan_loai
+    
+    # 1. Ép kiểu để so sánh chính xác
     ma = str(ma_dtv).strip()
+    
+    # 2. Lọc lấy các hộ KHÔNG thuộc ĐTV đang xử lý
     mask_khac = df_all["MaDTV"].astype(str).str.strip() != ma
     phan_con_lai = df_all[mask_khac]
-    return pd.concat([phan_con_lai, df_nen_da_phan_loai], ignore_index=True)
+    
+    # 3. Đảm bảo dữ liệu mới vẫn gắn với đúng Mã ĐTV
+    df_moi = df_nen_da_phan_loai.copy()
+    df_moi["MaDTV"] = ma
+    
+    # 4. Ghép lại toàn bộ danh sách (đã bao gồm các hộ đã chọn mẫu mới)
+    return pd.concat([phan_con_lai, df_moi], ignore_index=True)
 
 
 # ---------------------------------------------------------------------------
@@ -629,7 +679,7 @@ def _spreadsheet_url() -> str:
             "gsheets_url.txt (dòng đầu, không có #) hoặc spreadsheet_url trong secrets.toml."
         )
     url = str(url).strip()
-    
+    # Bỏ ?gid=... và #gid=... — gspread chỉ cần link /edit
     if "?" in url:
         url = url.split("?", 1)[0]
     if "#" in url:
@@ -637,79 +687,71 @@ def _spreadsheet_url() -> str:
     return url
 
 
-def _credentials_json_path() -> Path:
-    """Chỉ dùng đúng file JSON khai báo trong secrets — không đoán file khác."""
-    root = _project_root()
-    cfg = _gsheets_cfg()
-    cred_file = cfg.get("credentials_file")
-    if not cred_file:
-        raise FileNotFoundError(
-            "Thiếu credentials_file trong [connections.gsheets] "
-            "(ví dụ: .credentials/crypto-avenue-410700-f7e540ba2e49.json)"
-        )
-    path = Path(cred_file)
-    if not path.is_absolute():
-        path = root / path
-    if not path.exists():
-        raise FileNotFoundError(f"Không tìm thấy file JSON: {path}")
-    return path
+# --- KẾT NỐI MỚI - GỌN VÀ CHUẨN ---
+@st.cache_resource
+def _gspread_client():
+    # Lấy trực tiếp từ Secrets - không tìm file vật lý nữa
+    json_key = json.loads(st.secrets["gcp_service_account"]["json"])
+    creds = Credentials.from_service_account_info(
+        json_key, 
+        scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+    )
+    return gspread.authorize(creds)
 
+def _open_spreadsheet():
+    # Mở sheet bằng URL từ Secrets
+    return _gspread_client().open_by_url(st.secrets["connections"]["gsheets"]["spreadsheet"])
 
 def _service_account_email() -> str:
-    _, data = _load_credentials_json()
-    return str(data.get("client_email", "")).strip()
+    """Lấy email an toàn từ JSON trong Secrets."""
+    json_data = st.secrets["gcp_service_account"]["json"]
+    
+    # Nếu là chuỗi, ta chuyển thành dict
+    if isinstance(json_data, str):
+        json_key = json.loads(json_data)
+    # Nếu đã là dict (do Streamlit tự parse), ta dùng trực tiếp
+    else:
+        json_key = json_data
+        
+    return str(json_key.get("client_email", "")).strip()
 
-
-def _load_credentials_json() -> tuple[Path, dict]:
-    path = _credentials_json_path()
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if data.get("type") != "service_account":
-        raise ValueError(f"File JSON không phải Service Account: {path}")
-    return path, data
-
-
+@st.cache_resource
 @st.cache_resource
 def _gspread_client():
     import gspread
     from google.oauth2.service_account import Credentials
+    import json
 
-    cred_path = _credentials_json_path()
-    creds = Credentials.from_service_account_file(str(cred_path), scopes=_GSHEETS_SCOPES)
+    # Đọc trực tiếp nội dung JSON từ "két sắt" Secrets
+    json_key = json.loads(st.secrets["gcp_service_account"]["json"])
+    
+    # Kết nối
+    creds = Credentials.from_service_account_info(json_key, scopes=_GSHEETS_SCOPES)
     return gspread.authorize(creds)
 
-
 def _open_spreadsheet():
+    # Gọi hàm kết nối đã sửa ở trên
     gc = _gspread_client()
-    return gc.open_by_url(_spreadsheet_url())
-
+    # Lấy URL từ Secrets
+    url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+    return gc.open_by_url(url)
 
 def hien_thi_thong_tin_ket_noi_gsheets(*, truoc_khi_ghi: bool = False) -> bool:
-    """
-    In ra email + link đang dùng để người dùng đối chiếu với file đã chia sẻ quyền.
-    Trả về False nếu JSON sai email hoặc không mở được spreadsheet.
-    """
+    """In ra email và link đang dùng để kiểm tra cấu hình."""
     try:
-        cred_path, _ = _load_credentials_json()
-        email = _service_account_email()
-        url = _spreadsheet_url()
-    except ValueError as e:
-        st.error(str(e))
-        return False
+        import json
+        json_key = json.loads(st.secrets["gcp_service_account"]["json"])
+        email = json_key.get("client_email", "Không xác định")
+        url = st.secrets["connections"]["gsheets"]["spreadsheet"]
     except Exception as e:
-        st.error(f"Không đọc được cấu hình Google Sheets: {e}")
+        st.error(f"Lỗi đọc cấu hình từ Secrets: {e}")
         return False
 
-    st.info(
-        f"Đang dùng tài khoản **{email}** để ghi vào file [{url}]({url})"
-    )
-    st.caption(f"File JSON: `{cred_path}`")
+    st.info(f"Đang dùng tài khoản **{email}** để ghi vào file [Google Sheets]({url})")
 
-    if email != EXPECTED_SERVICE_EMAIL:
-        st.error(
-            f"Sai file JSON — email trong file là `{email}`, "
-            f"cần đúng `{EXPECTED_SERVICE_EMAIL}`. "
-            f"Sửa `credentials_file` trong `.streamlit/secrets.toml`."
-        )
+    # Kiểm tra email khớp hay không
+    if "EXPECTED_SERVICE_EMAIL" in globals() and email != EXPECTED_SERVICE_EMAIL:
+        st.error(f"Sai tài khoản! Email là `{email}`, cần đúng `{EXPECTED_SERVICE_EMAIL}`.")
         return False
 
     if not truoc_khi_ghi:
@@ -717,45 +759,22 @@ def hien_thi_thong_tin_ket_noi_gsheets(*, truoc_khi_ghi: bool = False) -> bool:
 
     try:
         sh = _open_spreadsheet()
-        if sh.title.strip().lower() != EXPECTED_SPREADSHEET_TITLE.lower():
-            st.warning(
-                f"Tên file Google Sheets đang mở là **«{sh.title}»**, "
-                f"không khớp **«{EXPECTED_SPREADSHEET_TITLE}»**. "
-                f"Có thể link trong `gsheets_url.txt` / `secrets.toml` trỏ nhầm file. "
-                f"Hãy copy link từ thanh địa chỉ khi mở đúng file Dieutrathunhaptest."
-            )
-        else:
-            st.success(f"Đã mở đúng file Google Sheets: **{sh.title}**")
+        st.success(f"Đã mở đúng file: **{sh.title}**")
         return True
-    except PermissionError as e:
-        st.error(_gsheets_error_message(e, sheet_name=SHEET_DANH_SACH_HO, action="mở file"))
-        return False
     except Exception as e:
-        st.error(_gsheets_error_message(e, sheet_name=SHEET_DANH_SACH_HO, action="mở file"))
+        st.error(f"Lỗi khi mở file: {e}")
         return False
 
 
 def _loi_api_chua_bat(exc: Exception) -> str:
-    """Google Cloud project chưa bật Google Sheets API (thường bị gói thành PermissionError)."""
-    try:
-        _, data = _load_credentials_json()
-        project_id = data.get("project_id", "")
-    except Exception:
-        project_id = ""
-    link = (
-        f"https://console.developers.google.com/apis/api/sheets.googleapis.com/overview"
-        f"?project={project_id}"
-        if project_id
-        else "https://console.cloud.google.com/apis/library/sheets.googleapis.com"
-    )
+    """Thông báo lỗi API trực tiếp, không cần gọi file JSON."""
     return (
-        f"❌ **Google Sheets API chưa được bật** trên project Google Cloud của file JSON.\n\n"
-        f"Đây là lý do chính gây PermissionError dù đã chia sẻ Editor đúng email.\n\n"
-        f"**Cách sửa:**\n"
-        f"1. Mở: {link}\n"
-        f"2. Bấm **Enable** (Bật) Google Sheets API\n"
-        f"3. (Khuyến nghị) Bật thêm **Google Drive API** trên cùng project\n"
-        f"4. Đợi 1–2 phút rồi chạy lại app\n\n"
+        f"❌ **Lỗi kết nối Google API:**\n\n"
+        f"Có thể Google Sheets API hoặc Google Drive API chưa được bật trên Google Cloud Console.\n\n"
+        f"**Cách xử lý:**\n"
+        f"1. Truy cập: https://console.cloud.google.com/apis/library\n"
+        f"2. Tìm và bật (Enable) 'Google Sheets API' và 'Google Drive API'.\n"
+        f"3. Kiểm tra xem email Service Account đã được chia sẻ quyền 'Editor' với file Sheets của bạn chưa.\n\n"
         f"Chi tiết kỹ thuật: {exc}"
     )
 
@@ -870,8 +889,7 @@ def update_sheet(
 
 def _kiem_tra_ket_noi_gsheets() -> bool:
     """Kiểm tra JSON + quyền mở spreadsheet (không hiện đường dẫn file kỹ thuật)."""
-    try:
-        cred_path, _ = _load_credentials_json()
+    try:      
         email = _service_account_email()
         if email != EXPECTED_SERVICE_EMAIL:
             st.error(
@@ -1306,41 +1324,67 @@ def kiem_tra_validation_phieu(ho_so: str, form_ver: int) -> tuple[bool, list[str
 
 
 def reset_du_lieu_phieu_ho(ho_so: str, form_ver: int) -> None:
+    # 1. Reset các chi tiết lĩnh vực
     for muc in CHI_TIEU_PHAN_B:
         if muc["loai"] == "linh_vuc_sp":
             xoa_chi_tiet_linh_vuc(muc["ma"], ho_so, form_ver)
+    
     st.session_state.pop(f"ds_tv_{ho_so}_{form_ver}", None)
+    
+    # 2. Reset các nhóm hoạt động
     for nhom in NHOM_NHAP:
-        st.session_state.pop(_key_hoat_dong(nhom["id"], ho_so, form_ver), None)
+        if isinstance(nhom, dict) and "id" in nhom:
+            st.session_state.pop(_key_hoat_dong(nhom["id"], ho_so, form_ver), None)
+        else:
+            # Sửa: Đưa cảnh báo vào trong 'else' của 'if', không phải của 'for'
+            st.write(f"Cảnh báo: Mục lỗi trong NHOM_NHAP: {nhom}")
 
 
 def nhap_lieu_5_nhom(ho_so: str, form_ver: int) -> None:
-    """Tab 2 — 5 nhóm luồng nhập liệu độc lập."""
-    st.caption("Đơn vị: **nghìn đồng/tháng**. Mỗi nhóm hỏi trước — chọn **Không** sẽ ghi 0 và chuyển nhóm tiếp theo.")
+    """Tab 2 — 5 nhóm luồng nhập liệu độc lập với giao diện tối ưu."""
+    st.caption("Đơn vị: **nghìn đồng/tháng**.")
 
     for nhom in NHOM_NHAP:
         with card_container(nhom["ten"]):
-            co_hd = hoi_co_hoat_dong(nhom, ho_so, form_ver)
-            if not co_hd:
-                if nhom["loai"] == "thanh_vien":
-                    st.session_state[f"ds_tv_{ho_so}_{form_ver}"] = []
-                elif nhom["loai"] == "don":
-                    _dat_zero_nhom_don(nhom["ma"], ho_so, form_ver)
-                elif nhom["loai"] == "nlt":
-                    _dat_zero_nhom_nlt(ho_so, form_ver)
-                st.caption("Đã ghi **0** — chuyển sang nhóm kế tiếp.")
-                continue
-
-            if nhom["loai"] == "thanh_vien":
+            # --- PHẦN HỎI CÓ/KHÔNG ---
+            if nhom["id"] == "thanh_vien":
+                st.write("Nhập thông tin nhân khẩu hộ:")
+            else:
+                cau_hoi = (
+                    "Trong 12 tháng qua, hộ ông/bà có ai đi làm để nhận tiền lương, tiền công không?" 
+                    if nhom["id"] == "luong" 
+                    else f"Hộ có hoạt động {nhom['ten']} không?"
+                )
+                
+                co_hd = st.radio(
+                    cau_hoi, 
+                    ["Có", "Không"], 
+                    horizontal=True, 
+                    key=_key_hoat_dong(nhom["id"], ho_so, form_ver)
+                ) == "Có"
+                
+                if not co_hd:
+                    if nhom["loai"] == "don":
+                        _dat_zero_nhom_don(nhom["ma"], ho_so, form_ver)
+                    elif nhom["loai"] == "nlt":
+                        _dat_zero_nhom_nlt(ho_so, form_ver)
+                    st.caption("Đã ghi **0**.")
+                    continue
+            
+            # --- PHẦN HIỂN THỊ NHẬP LIỆU ---
+            if nhom["id"] == "thanh_vien":
                 nhap_thanh_vien_ho(ho_so, form_ver)
             elif nhom["loai"] == "don":
-                muc = next((m for m in CHI_TIEU_PHAN_B if m["ma"] == nhom["ma"]), None)
+                # Dùng map_chi_tieu để lấy dữ liệu tức thời
+                muc = map_chi_tieu.get(nhom["ma"])
                 if muc:
                     nhap_muc_don_doc(muc["ma"], muc["ten"], ho_so, form_ver)
             elif nhom["loai"] == "nlt":
-                for muc in CHI_TIEU_PHAN_B:
-                    if muc["loai"] == "linh_vuc_sp":
-                        nhap_linh_vuc_co_san_pham(muc["ma"], muc["ten"], ho_so, form_ver)
+                # Lấy danh sách mục NLT và vẽ Divider thông minh
+                muc_nlt = [m for m in CHI_TIEU_PHAN_B if m["loai"] == "linh_vuc_sp"]
+                for i, muc in enumerate(muc_nlt):
+                    nhap_linh_vuc_co_san_pham(muc["ma"], muc["ten"], ho_so, form_ver)
+                    if i < len(muc_nlt) - 1:
                         st.divider()
 
 
@@ -1350,15 +1394,18 @@ def tab_nhap_lieu_mobile(ho_so: str, form_ver: int) -> None:
 
 
 def tinh_tong_7_nguon(du_lieu: dict[str, float]) -> float:
+    """Tính tổng 7 nguồn thu nhập theo danh sách cấu hình."""
     return sum(float(du_lieu.get(k, 0) or 0) for k, _ in BAO_CAO_7_NGUON)
 
 
 def tao_ban_tong_hop_7_nguon(du_lieu: dict[str, float]) -> pd.DataFrame:
+    """Tạo bảng tổng hợp 7 nguồn thu nhập để hiển thị."""
     rows = [{"Nguồn thu nhập": ten, "Giá trị (nghìn đ/tháng)": du_lieu.get(key, 0)} for key, ten in BAO_CAO_7_NGUON]
     return pd.DataFrame(rows)
 
 
 def dinh_dang_toa_do_gps(gia_tri: Any, *, fake: bool) -> str | None:
+    """Định dạng tọa độ GPS, xử lý gắn nhãn giả nếu cần."""
     if gia_tri is None:
         return None
     s = str(gia_tri)
@@ -1382,17 +1429,48 @@ def tao_dong_ket_qua_qd1099(
     geo: dict[str, Any] | None = None,
     ghi_chu_vi_tri: str = "",
 ) -> dict[str, Any]:
+    # 1. Khởi tạo row với tên cột chuẩn hóa
     row: dict[str, Any] = {
         "MaDTV": ma_dtv,
         "HoSo": str(ho.get("HoSo", "")),
-        "Huyen": str(ho.get("Huyen", "")),
+        "MaTKCS": str(ho.get("MaTKCS", ho.get("Huyen", ""))),
         "Xa": str(ho.get("Xa", "")),
         "DiaBan": str(ho.get("DiaBan", "")),
+        "MaDiaBan": str(geo.get("ma_dia_ban", ho.get("MaDiaBan", ""))),
         "TenChuHo": str(ho.get("TenChuHo", "")),
         "NhanKhauTT": nhan_khau,
         "ThuLuong": thu_luong,
         "ThuKhac": thu_khac,
     }
+
+    # 2. Xử lý logic GPS và xác thực vị trí (Mock GPS)
+    co_mock = bool(loc and (loc.get("mocked") or loc.get("is_mock")))
+    lat = loc.get("latitude") if loc else None
+    lng = loc.get("longitude") if loc else None
+    row["GPS_lat"] = dinh_dang_toa_do_gps(lat, fake=co_mock)
+    row["GPS_lng"] = dinh_dang_toa_do_gps(lng, fake=co_mock)
+    sai_so = gps.get("sai_so")
+    row["DoChinhXac"] = sai_so
+    row["Sai_so"] = sai_so
+    row["Do_cao"] = gps.get("do_cao")
+    
+    if co_mock:
+        row["Xac_Thuc_GPS"] = f"GIẢ - {_ten_ung_dung_gps_gia(loc)}"
+    else:
+        row["Xac_Thuc_GPS"] = gps.get("xac_thuc_gps", "Hợp lệ")
+        
+    row["IP"] = get_client_ip()
+    row["MockGPS"] = "Có" if (co_mock or gps.get("to_do_do")) else "Không"
+    row["NgayNhap"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # 3. Xử lý địa lý
+    if geo:
+        kc = geo.get("khoang_cach_m")
+        row["KhoangCachLech"] = round(kc, 1) if kc is not None else ""
+        row["GhiChuViTri"] = ghi_chu_vi_tri.strip()
+        row["DiaChi"] = geo.get("dia_chi", "")
+
+    # 4. Tính thu nhập 7 nguồn
     tong_7: dict[str, float] = {"ThuLuong": thu_luong, "ThuKhac": thu_khac}
     for code, _ten in LINH_VUC_NLN_TS:
         dt, cp, thuan = linh_vuc.get(code, (0.0, 0.0, 0.0))
@@ -1401,6 +1479,7 @@ def tao_dong_ket_qua_qd1099(
         row[f"Thu_{code}"] = thuan
         tong_7[f"Thu_{code}"] = thuan
 
+    # 5. Tính thu nhập SXKD và Tổng thu nhập
     thu_sxkd = thu_thuan(dt_sxkd, cp_sxkd)
     row["DT_SXKD"] = dt_sxkd
     row["CP_SXKD"] = cp_sxkd
@@ -1411,29 +1490,7 @@ def tao_dong_ket_qua_qd1099(
     nk = max(1, int(nhan_khau or 1))
     row["TongThuNhap"] = tong
     row["ThuBQDauNguoi"] = round(tong / nk, 2)
-
-    co_mock = bool(loc and (loc.get("mocked") or loc.get("is_mock")))
-    lat = loc.get("latitude") if loc else None
-    lng = loc.get("longitude") if loc else None
-    row["GPS_lat"] = dinh_dang_toa_do_gps(lat, fake=co_mock)
-    row["GPS_lng"] = dinh_dang_toa_do_gps(lng, fake=co_mock)
-    sai_so = gps.get("sai_so")
-    row["DoChinhXac"] = sai_so
-    row["Sai_so"] = sai_so
-    row["Do_cao"] = gps.get("do_cao")
-    if co_mock:
-        row["Xac_Thuc_GPS"] = f"GIẢ - {_ten_ung_dung_gps_gia(loc)}"
-    else:
-        row["Xac_Thuc_GPS"] = gps.get("xac_thuc_gps", "Hợp lệ")
-    row["IP"] = get_client_ip()
-    row["MockGPS"] = "Có" if (co_mock or gps.get("to_do_do")) else "Không"
-    row["NgayNhap"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    if geo:
-        kc = geo.get("khoang_cach_m")
-        row["KhoangCachLech"] = round(kc, 1) if kc is not None else ""
-        row["MaDiaBan"] = geo.get("ma_dia_ban", "")
-        row["GhiChuViTri"] = ghi_chu_vi_tri.strip()
-        row["DiaChi"] = geo.get("dia_chi", "")
+    
     return row
 
 
@@ -1681,20 +1738,17 @@ def phan_tich_vi_tri_gps(loc: dict | None) -> dict[str, Any]:
 # UI: Đăng nhập
 # ---------------------------------------------------------------------------
 def page_login():
-    st.markdown(
-        '<div class="main-header"><h2>📊 Phiếu hỏi thu nhập — QĐ 1099</h2></div>',
-        unsafe_allow_html=True,
-    )
+    
     _, col2, _ = st.columns([1, 2, 1])
     with col2:
         vai_tro = st.radio(
             "Vai trò đăng nhập",
-            ["Quản trị viên", "Điều tra viên"],
+            ["QUẢN TRỊ VIÊN", "ĐIỀU TRA VIÊN"],
             horizontal=True,
         )
-
-        st.caption("Tài khoản ĐTV: sheet **Account** trên Google Sheets.")
-        if vai_tro == "Quản trị viên":
+        
+        # --- ĐOẠN ĐÃ SỬA CHUẨN ---
+        if vai_tro == "QUẢN TRỊ VIÊN":
             mk = st.text_input("Mật khẩu Admin", type="password", key="login_admin_mk")
             if st.button("Đăng nhập", type="primary", use_container_width=True, key="btn_login_admin"):
                 if normalize_ma(mk) == ADMIN_MA:
@@ -1706,37 +1760,26 @@ def page_login():
                     st.rerun()
                 else:
                     st.error("Mật khẩu quản trị không đúng.")
+        # --- PHẦN ĐIỀU TRA VIÊN (đoạn code bạn vừa gửi) ---
         else:
             ma = st.text_input("Mã ĐTV", key="login_ma_dtv_txt")
             mk = st.text_input("Mật khẩu", type="password", key="login_mk_dtv")
             if st.button("Đăng nhập", type="primary", use_container_width=True, key="btn_login_dtv"):
                 if not ma or not mk:
                     st.warning("Nhập đầy đủ Mã ĐTV và mật khẩu.")
-                    return
-                ok, loi, row = xac_thuc_dang_nhap(ma, mk)
-                if not ok:
-                    st.error(loi)
-                    return
-                df_ho = ho_mau_can_dieu_tra(
-                    ho_theo_ma_dtv(read_sheet(SHEETS["danh_sach_ho"]), ma)
-                )
-                if df_ho.empty:
-                    st.error("Chưa có hộ **Mẫu** — quản trị cần **Chọn mẫu hệ thống**.")
-                    return
-                st.session_state["user"] = {
-                    "ma": str(ma).strip(),
-                    "role": "dtv",
-                    "ten": str(row.get("HoTen", ma)),
-                    "so_ho": len(df_ho),
-                }
-                if can_doi_mat_khau(mk, ma):
-                    st.session_state["bat_doi_mk"] = True
-                st.rerun()
+                else:
+                    ok, loi, row = xac_thuc_dang_nhap(ma, mk)
+                    if not ok:
+                        st.error(loi)
+                    else:
+                        # Logic sau khi đăng nhập ĐTV thành công
+                        st.session_state["user"] = {"ma": ma, "role": "dtv", "ten": row.get("Ten", "ĐTV")}
+                        st.rerun()
 
 
 def page_doi_mat_khau():
     user = st.session_state["user"]
-    st.markdown("### 🔐 Đổi mật khẩu bắt buộc")
+    render_header("🔐 Đổi mật khẩu bắt buộc")
     st.warning(f"Tài khoản **{user['ma']}** phải đổi mật khẩu mặc định trước khi nhập liệu.")
     mk1 = st.text_input("Mật khẩu mới", type="password")
     mk2 = st.text_input("Nhập lại mật khẩu mới", type="password")
@@ -1823,20 +1866,30 @@ def _bang_tong_hop_thu_nhap(df_kq_xa: pd.DataFrame) -> pd.DataFrame:
     return bang
 
 
-def render_admin_dashboard() -> None:
-    """Hệ thống điều hành thống kê — hiển thị ngay khi Admin đăng nhập."""
-    user = st.session_state.get("user", {})
-    if user.get("role") != "admin" or not is_admin(str(user.get("ma", ""))):
-        st.warning("Bạn không có quyền truy cập trang quản trị.")
-        return
+def render_admin_dashboard(df_ho, df_kq) -> None:
+    # --- CSS CĂN GIỮA MỌI THỨ ---
+    st.markdown("""
+        <style>
+            /* Căn giữa tiêu đề và các khối */
+            .main .block-container {
+                max-width: 80%; /* Giới hạn độ rộng để không bị trải dài quá mức */
+                margin: 0 auto; /* Tự động căn giữa */
+            }
+            /* Căn giữa chữ */
+            h2, h3, .stMetric {
+                text-align: center;
+            }
+            /* Căn giữa cột */
+            [data-testid="column"] {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+        </style>
+    """, unsafe_allow_html=True)   
 
-    st.markdown(
-        '<div class="dash-header"><h1>HỆ THỐNG ĐIỀU HÀNH THỐNG KÊ</h1></div>',
-        unsafe_allow_html=True,
-    )
-
-    df_ho = read_sheet(SHEETS["danh_sach_ho"], silent=True)
-    df_kq = read_sheet(SHEETS["ket_qua"], silent=True)
+    # 4. DASHBOARD (Các chỉ số)
+    # LƯU Ý: Không dùng read_sheet ở đây nữa, dùng tham số df_ho, df_kq truyền vào từ main
     work = _df_mau_tien_do(df_ho, df_kq)
 
     tong_ho = len(work) if not work.empty else 0
@@ -1847,20 +1900,19 @@ def render_admin_dashboard() -> None:
     thu_bq = 0.0
     if not df_kq_num.empty and "ThuBQDauNguoi" in df_kq_num.columns:
         thu_bq = round(float(df_kq_num["ThuBQDauNguoi"].mean()), 1)
-    elif not df_kq_num.empty and "TongThuNhap" in df_kq_num.columns:
-        thu_bq = round(float(df_kq_num["TongThuNhap"].mean()), 1)
 
     with card_container():
         k1, k2, k3, k4 = st.columns(4)
         k1.metric("Tổng hộ", f"{tong_ho:,}")
-        k2.metric("Tiến độ toàn huyện", f"{ty_le}%")
-        k3.metric("Thu nhập bình quân", f"{thu_bq:,.0f}")
-        k4.metric("Tỷ lệ hoàn thành", f"{ty_le}%")
+        k2.metric("Tiến độ", f"{ty_le}%")
+        k3.metric("Thu nhập BQ", f"{thu_bq:,.0f}")
+        k4.metric("Hoàn thành", f"{ty_le}%")
 
     if work.empty or "Xa" not in work.columns:
         st.info("Chưa có dữ liệu hộ mẫu — tải Excel và chọn mẫu tại menu **Hệ thống**.")
     else:
         col_trai, col_phai = st.columns(2)
+        # ... [Giữ nguyên phần logic biểu đồ phía sau của bạn ở đây] ...
         with col_trai:
             with card_container("Thu nhập bình quân theo Xã"):
                 if not df_kq_num.empty and "Xa" in df_kq_num.columns and "ThuBQDauNguoi" in df_kq_num.columns:
@@ -1933,25 +1985,33 @@ def render_admin_dashboard() -> None:
                         st.plotly_chart(fig2, use_container_width=True)
 
         with card_container("Tổng hợp nhanh thu nhập"):
+            # Tự động lấy nhãn "TKCS" vì bạn đã sửa trong session_state
+            label_xa = st.session_state.ten_vi["Xa"]
+            label_tkcs = st.session_state.ten_vi["Huyen"] # Trả về "TKCS"
+                    
             xa_tb = st.selectbox(
-                "Xã (bảng tổng hợp)",
-                ["Toàn huyện"] + sorted(work["Xa"].astype(str).str.strip().unique().tolist()),
+                f"{label_xa} (bảng tổng hợp)",
+                [f"Toàn bộ {label_tkcs}"] + sorted(work["Xa"].astype(str).str.strip().unique().tolist()),
                 key="dash_xa_bang",
             )
-            if xa_tb == "Toàn huyện":
+            # Logic lọc dữ liệu
+            if xa_tb == f"Toàn bộ {label_tkcs}":
                 df_tb = df_kq_num
             else:
+                # Lọc theo đúng Xã đã chọn
                 df_tb = df_kq_num[df_kq_num["Xa"].astype(str).str.strip() == xa_tb] if not df_kq_num.empty else pd.DataFrame()
+            
+            # Hiển thị bảng
             bang = _bang_tong_hop_thu_nhap(df_tb)
             if bang.empty:
-                st.caption("Chưa có dữ liệu thu nhập.")
+                st.caption(f"Chưa có dữ liệu thu nhập cho {label_xa} này.")
             else:
                 hien_dataframe_an_toan(bang)
 
     with st.expander("👥 Quản lý ĐTV — Reset mật khẩu", expanded=False):
         df_acc = read_accounts()
         if df_acc.empty:
-            st.caption("Chưa có tài khoản ĐTV.")
+            st.caption("Chưa có TÀI KHOẢN ĐTV.")
         else:
             map_xh = xa_huyen_theo_dtv(df_ho)
             for _, row in df_acc.iterrows():
@@ -1969,7 +2029,7 @@ def render_admin_dashboard() -> None:
 
 
 def admin_trang_chu():
-    st.markdown("### 🏠 Trang chủ")
+    render_header("🏠 Trang chủ")
     st.markdown(
         """
         **Điều tra thu nhập hộ — QĐ 1099/QĐ-BKHĐT**
@@ -1982,15 +2042,14 @@ def admin_trang_chu():
 
 
 def admin_he_thong():
-    st.markdown("### ⚙️ Hệ thống")
+    render_header("⚙️ Hệ thống")
     tab1, tab2 = st.tabs(["📤 Tải lên danh sách hộ", "🎯 Chọn mẫu hệ thống"])
 
     with tab1:
+        st.write("### 📤 Tải lên danh sách hộ")
         st.caption(
-            "Tệp Excel cần có: **Huyện**, **Xã**, **Địa bàn**, **Hộ số**, **Tên chủ hộ**, **Mã ĐTV** "
-            "(có dấu hoặc không dấu đều được). Hệ thống tự lọc **10 Mã ĐTV đầu tiên**, "
-            "mỗi mã **100 hộ nền đầu tiên** (tối đa **1.000 hộ**). "
-            "Sau đó sang tab **Chọn mẫu** để đánh dấu **40 hộ mẫu** / 60 hộ dự phòng."
+            "Tải lên tệp Excel chứa danh sách hộ điều tra. "
+            "Hệ thống sẽ nạp toàn bộ danh sách để bạn chọn mẫu trên mọi ĐTV và mọi hộ nền."
         )
         f = st.file_uploader("Chọn tệp Excel (.xlsx, .xls)", type=["xlsx", "xls"], key="upload_ho_excel")
         if f and st.button("Tải lên", type="primary", use_container_width=True):
@@ -1999,118 +2058,87 @@ def admin_he_thong():
             except Exception as e:
                 st.error(f"Lỗi đọc tệp Excel: {e}")
                 return
+            
             if df_raw is None:
-                st.error(
-                    "Thiếu các cột bắt buộc (sau khi nhận diện tên cột): " + ", ".join(thieu)
-                )
+                st.error("Thiếu các cột bắt buộc: " + ", ".join(thieu))
                 return
 
-            df_loc, dtv_10 = loc_mau_1000_ho(df_raw)
-            if df_loc.empty or not dtv_10:
-                st.error(
-                    "Không lọc được hộ mẫu. Kiểm tra cột **Mã ĐTV** trong file Excel "
-                    "và đảm bảo có đủ dữ liệu."
-                )
+            # Gọi hàm lọc đã được bỏ giới hạn
+            df_loc, dtv_list = loc_mau_1000_ho(df_raw)
+            
+            if df_loc.empty:
+                st.error("File Excel không có dữ liệu hộ nào.")
                 return
-
+            
+            # Thông báo cho bạn và anh Truyền biết đã tải bao nhiêu hộ
+            st.success(f"Đã tải thành công **{len(df_loc)}** hộ vào hệ thống.")
+            
+            # (Giữ nguyên các đoạn code logic tiếp theo của bạn ở đây...)
+            # 1. Sửa caption hiển thị tổng số
             st.caption(
                 f"Trong file gốc có **{len(danh_sach_ma_dtv_theo_thu_tu(df_raw['MaDTV']))}** "
-                f"Mã ĐTV; đã lấy **{len(dtv_10)}** mã đầu tiên."
+                f"Mã ĐTV; hệ thống đã lấy toàn bộ để xử lý."
             )
 
             cot_ho = COL_HO + ["MaDTV"]
             for cot_them in ("DiaChi", "MaDiaBan"):
                 if cot_them in df_loc.columns:
                     cot_ho.append(cot_them)
+            
             df_ho_gs = df_loc[cot_ho].copy()
             df_ho_gs[COL_PHAN_LOAI] = PHAN_LOAI_NEN
             ok_ho = write_sheet_replace(SHEETS["danh_sach_ho"], df_ho_gs)
 
             if ok_ho:
-                dong_bo_account_tu_ma_dtv(dtv_10)
+                # 2. Đẩy toàn bộ dtv_list (không còn dtv_10) vào đồng bộ
+                dong_bo_account_tu_ma_dtv(dtv_list) 
                 write_sheet_replace(SHEETS["phan_cong"], pd.DataFrame(), silent=True)
                 write_sheet_replace(SHEETS["ket_qua"], pd.DataFrame(), silent=True)
 
-                if len(dtv_10) == 10 and len(df_loc) == 1000:
-                    st.toast("Đã lọc và nạp thành công 1.000 hộ của 10 ĐTV.", icon="✅")
-                else:
-                    st.toast(
-                        f"Đã nạp {len(df_loc)} hộ của {len(dtv_10)} ĐTV.",
-                        icon="✅",
-                    )
+                # 3. Bỏ logic kiểm tra 10 và 1000
+                st.toast(
+                    f"Đã nạp thành công {len(df_loc)} hộ của {len(dtv_list)} ĐTV.", 
+                    icon="✅"
+                )
+                
                 st.caption(
-                    f"Mã ĐTV: {', '.join(dtv_10)} — Tiếp theo: tab **Chọn mẫu hệ thống**."
+                    f"Tổng số ĐTV: {len(dtv_list)} — Tiếp theo: tab **Chọn mẫu hệ thống**."
                 )
                 st.markdown("#### Dữ liệu hộ vừa nạp")
-                hien_dataframe_an_toan(df_loc)
+                hien_bang_ngang(df_loc)
             else:
                 st.toast("Không ghi được dữ liệu. Kiểm tra kết nối.", icon="⚠️")
 
     with tab2:
-        st.caption(
-            f"**Bước 1:** Lấy **{SO_HO_NEN} hộ nền** đầu tiên của mỗi Mã ĐTV (đã nạp ở tab Tải lên). "
-            f"**Bước 2:** Trong 100 hộ đó, chọn **{SO_HO_MAU} hộ mẫu** theo bước nhảy **k** "
-            f"(ví dụ k=2: cách 1 hộ lấy 1 hộ). Nếu chưa đủ {SO_HO_MAU} thì lấy nốt các hộ tiếp theo. "
-            f"**Bước 3:** Ghi cả 100 hộ lên Google Sheets với cột **Phân loại**."
-        )
+        st.caption("Bạn có thể thực hiện chọn mẫu tự động trên toàn bộ số hộ đã nạp.")
         df_ho = read_sheet(SHEETS["danh_sach_ho"])
-        if df_ho.empty:
-            st.warning("Chưa có danh sách hộ. Vui lòng tải lên Excel ở tab «Tải lên danh sách hộ».")
+        if df_ho.empty or "MaDTV" not in df_ho.columns:
+            st.warning("Chưa có danh sách hộ hoặc thiếu cột Mã ĐTV.")
             return
 
-        if "MaDTV" not in df_ho.columns:
-            st.warning("Danh sách hộ chưa có cột Mã ĐTV. Vui lòng tải lên lại file Excel.")
-            return
         dtv_list = danh_sach_ma_dtv_theo_thu_tu(df_ho["MaDTV"])
-        if not dtv_list:
-            st.warning("Không có Mã ĐTV trong danh sách đã nạp.")
-            return
-
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            ma_dtv = st.selectbox("Mã điều tra viên", dtv_list)
-        with c2:
-            k = st.number_input(
-                "k (bước nhảy)",
-                min_value=1,
-                value=2,
-                step=1,
-                help=f"Cứ cách k-1 hộ lấy 1 hộ trong {SO_HO_NEN} hộ nền, đến đủ {SO_HO_MAU} hộ mẫu",
-            )
-        with c3:
-            r = st.number_input(
-                "r (vị trí bắt đầu trong 100 hộ nền)",
-                min_value=1,
-                max_value=SO_HO_NEN,
-                value=1,
-                step=1,
-            )
-
+        ma_dtv = st.selectbox("Chọn ĐTV", dtv_list)
         df_nen = lay_danh_sach_nen(df_ho, ma_dtv)
-        st.caption(f"Mã **{ma_dtv}**: có **{len(df_nen)}** hộ nền (tối đa {SO_HO_NEN}).")
-
-        if st.button("Chạy chọn mẫu và ghi Google Sheets", type="primary"):
-            if len(df_nen) < SO_HO_MAU:
-                st.warning(
-                    f"Chỉ có **{len(df_nen)}** hộ nền — cần ít nhất **{SO_HO_MAU}** hộ để chọn mẫu."
-                )
-                return
-
-            df_da_chon = ap_dung_chon_mau_cho_dtv(df_ho, ma_dtv, int(k), int(r))
-            so_mau = int((df_da_chon[COL_PHAN_LOAI] == PHAN_LOAI_MAU).sum())
-            so_nen = int((df_da_chon[COL_PHAN_LOAI] == PHAN_LOAI_NEN).sum())
-
-            df_out = cap_nhat_danh_sach_ho_theo_dtv(df_ho, ma_dtv, df_da_chon)
-            if write_sheet_replace(SHEETS["danh_sach_ho"], df_out):
-                st.toast(
-                    f"Đã chọn mẫu {ma_dtv}: {so_mau} hộ Mẫu, {so_nen} hộ Dự phòng.",
-                    icon="✅",
-                )
-                hien_dataframe_an_toan(df_da_chon)
-
+        tong_so_ho = len(df_nen)
+        
+        c1, c2, c3 = st.columns(3)
+        k = c1.number_input("k (bước nhảy)", 1, 100, 2)
+        r = c2.number_input("r (vị trí bắt đầu)", 1, max(1, tong_so_ho), 1)
+        
+        if c3.button("Chạy chọn mẫu", type="primary"):
+            if tong_so_ho < 1:
+                st.warning("Không có hộ nào.")
+            else:
+                df_da_chon = ap_dung_chon_mau_cho_dtv(df_ho, ma_dtv, int(k), int(r))
+                df_out = cap_nhat_danh_sach_ho_theo_dtv(df_ho, ma_dtv, df_da_chon)
+                if write_sheet_replace(SHEETS["danh_sach_ho"], df_out):
+                    st.success("Đã chọn mẫu xong!")
+                    hien_bang_ngang(df_da_chon)
+                else:
+                    st.error("Lỗi ghi Google Sheets.")
 
 def admin_tien_do():
-    st.markdown("### 📊 Tiến độ hoàn thành")
+    render_header("📊 Tiến độ hoàn thành")
     df_ho = read_sheet(SHEETS["danh_sach_ho"])
     df_kq = read_sheet(SHEETS["ket_qua"])
     if df_ho.empty or "MaDTV" not in df_ho.columns:
@@ -2169,12 +2197,15 @@ def admin_tien_do():
             fig2.update_layout(xaxis_title="Xã", yaxis_title="Tỷ lệ (%)")
             st.plotly_chart(fig2, use_container_width=True)
 
-    hien_dataframe_an_toan(prog_dtv)
+    hien_bang_ngang(prog_dtv)
 
 
-def admin_thong_tin_ho():
-    st.markdown("### 🔍 Thông tin hộ (soi chi tiết)")
-    df_kq = read_sheet(SHEETS["ket_qua"])
+def admin_thong_tin_ho(df_kq):
+    render_header("🔍 THÔNG TIN HỘ ")
+    
+    # ĐÃ XÓA: df_kq = read_sheet(SHEETS["ket_qua"])
+    # Bây giờ hàm sử dụng trực tiếp df_kq được truyền vào từ main()
+    
     if df_kq.empty:
         st.info("Chưa có phiếu nào được gửi lên hệ thống.")
         return
@@ -2184,8 +2215,8 @@ def admin_thong_tin_ho():
     row = df_kq[df_kq["HoSo"].astype(str) == sel].iloc[-1]
     headers = list(df_kq.columns)
     df_mot_ho = pd.DataFrame({col: [row[col]] for col in headers})
-    st.markdown("#### Chi tiết phiếu (một hàng ngang)")
-    hien_dataframe_an_toan(df_mot_ho)
+    render_header("Chi tiết phiếu (một hàng ngang)")
+    hien_bang_ngang(df_mot_ho)
 
     try:
         lat = float(row.get("GPS_lat"))
@@ -2207,9 +2238,12 @@ def admin_thong_tin_ho():
         st.error("⚠️ Phiếu có dấu hiệu vị trí GPS không hợp lệ (đã tô đỏ trên Google Sheets).")
 
 
-def admin_tong_hop():
-    st.markdown("### 📈 Tổng hợp báo cáo")
-    df_kq = read_sheet(SHEETS["ket_qua"])
+def admin_tong_hop(df_kq):
+    render_header("📈 Tổng hợp báo cáo")
+    
+    # ĐÃ XÓA: df_kq = read_sheet(SHEETS["ket_qua"])
+    # Hàm bây giờ nhận dữ liệu trực tiếp từ tham số df_kq
+    
     if df_kq.empty:
         st.info("Chưa có dữ liệu kết quả điều tra.")
         return
@@ -2282,7 +2316,7 @@ def dtv_nhap_phieu():
         st.session_state.form_ver = 0
     form_ver = int(st.session_state.form_ver)
 
-    st.markdown(f"### 📝 Nhập liệu phiếu hỏi — **Mã ĐTV: {ma}**")
+    render_header(f"📝 Nhập liệu phiếu hỏi — Mã ĐTV: <strong>{ma}</strong>")
 
     df_ho = ho_mau_can_dieu_tra(
         ho_theo_ma_dtv(read_sheet(SHEETS["danh_sach_ho"], silent=True), ma)
@@ -2384,48 +2418,36 @@ def dtv_nhap_phieu():
                     hien_loi_validation(msg)
 
         st.markdown("---")
-        if st.button(
-            "💾 Lưu phiếu",
-            type="primary",
-            use_container_width=True,
-            key=f"luu_{ho_so}_{form_ver}",
-            disabled=not hop_le,
-        ):
-            if geodesic is None:
-                st.toast("Thiếu thư viện geopy.", icon="⚠️")
-                return
-
+        if st.button("💾 Lưu phiếu", type="primary", use_container_width=True, key=f"luu_{ho_so}_{form_ver}", disabled=not hop_le):
+            # 1. Kiểm tra vị trí - KHÔNG CHẶN, CHỈ CẢNH BÁO
             gps = phan_tich_vi_tri_gps(loc)
-            if gps["canh_bao_dtv"]:
-                st.toast(gps["canh_bao_dtv"], icon="📍")
+            if gps and gps.get("canh_bao_dtv"):
+                st.warning(f"⚠️ {gps['canh_bao_dtv']}", icon="⚠️")
+                gps["GhiChuAdmin"] = f"Cảnh báo: {gps['canh_bao_dtv']}"
+            else:
+                gps["GhiChuAdmin"] = "Hợp lệ"
 
             geo = phan_tich_geofence(ho, loc)
-            gc = str(st.session_state.get(f"gc_vitri_{ho_so}_{form_ver}", "") or "").strip()
-            if geo.get("bat_buoc_ghi_chu") and not gc:
-                st.toast("Vui lòng ghi chú lý do khi vị trí lệch quá 2 km.", icon="⚠️")
-                return
-            if geo.get("muc") == "vang":
-                st.toast(geo.get("canh_bao", CANH_BAO_GEO_VANG), icon="📍")
-            elif geo.get("muc") == "do":
-                st.toast(geo.get("canh_bao", CANH_BAO_GEO_DO), icon="⚠️")
+            # Không dùng return ở đây
 
+            # 2. Tạo dòng dữ liệu (đảm bảo đúng tham số hàm của bạn)
             row = tao_dong_ket_qua_qd1099(
-                ma_dtv=ma,
-                ho=ho,
+                ma_dtv=ma, 
+                ho=ho, 
                 nhan_khau=nk,
-                thu_luong=du_lieu_form["thu_luong"],
-                linh_vuc=du_lieu_form["linh_vuc"],
-                dt_sxkd=du_lieu_form["dt_sxkd"],
-                cp_sxkd=du_lieu_form["cp_sxkd"],
-                thu_khac=du_lieu_form["thu_khac"],
-                loc=loc,
-                gps=gps,
+                thu_luong=du_lieu_form["thu_luong"], 
+                linh_vuc=du_lieu_form["linh_vuc"], 
+                dt_sxkd=du_lieu_form["dt_sxkd"], 
+                cp_sxkd=du_lieu_form["cp_sxkd"], 
+                thu_khac=du_lieu_form["thu_khac"], 
+                loc=loc, 
+                gps=gps, 
                 geo=geo,
-                ghi_chu_vi_tri=gc,
+                ghi_chu_vi_tri=str(st.session_state.get(f"gc_vitri_{ho_so}_{form_ver}", ""))
             )
+            
+            # 3. Lưu vào Google Sheets
             if append_ket_qua(row, silent=True):
-                reset_du_lieu_phieu_ho(ho_so, form_ver)
-                st.session_state.form_ver = form_ver + 1
                 st.toast("Đã lưu phiếu thành công.", icon="✅")
                 st.rerun()
             else:
@@ -2436,30 +2458,35 @@ def dtv_nhap_phieu():
 # Điều hướng chính
 # ---------------------------------------------------------------------------
 def main():
-    # 1. GIAO DIỆN LÊN ĐẦU TIÊN (CSS và Header)
-    apply_custom_style()
-    render_header()
-
-    # 2. TẢI DỮ LIỆU VỚI SPINNER (Tránh màn hình trắng chờ đợi)
-    with st.spinner("Đang tải dữ liệu hệ thống..."):
-        data = load_all_data_sync() # Lưu ý: Đảm bảo hàm này đã có @st.cache_data
-
-    # 3. LOGIC ĐĂNG NHẬP
+    # 1. Gọi trạm dữ liệu
+    data = load_all_data_sync()
+    
+    # 2. Kiểm tra đăng nhập (nếu chưa đăng nhập thì dừng lại ở đây)
     if "user" not in st.session_state:
         page_login()
         return
 
+    # --- ĐOẠN NÀY ĐỂ VẼ BANNER VÀ TIÊU ĐỀ ---
+    # Chỉ gọi render_header khi đã đăng nhập thành công
+    render_header("PHẦN MỀM ĐIỀU TRA THU NHẬP NĂM 2026")
+    # ----------------------------------------
+
+    # 3. Sidebar
     user = st.session_state["user"]
     st.sidebar.markdown(
-        f'<div class="main-header"><b>PMDTV</b><br><small>{user["ma"]}</small></div>',
+        f'<div class="main-header"><b>MENU ĐIỀU KHIỂN</b><br><small>{user["ma"]}</small></div>',
         unsafe_allow_html=True,
     )
 
-    # 4. CÁC PHẦN LOGIC ĐIỀU HÀNH
     if user["role"] == "admin" and is_admin(str(user.get("ma", ""))):
         menu = st.sidebar.radio(
             "Menu quản trị",
-            ["📊 Điều hành thống kê", "⚙️ Hệ thống", "🔍 Thông tin hộ", "📈 Tổng hợp"],
+            [
+                "📊 Điều hành thống kê",
+                "⚙️ Hệ thống",
+                "🔍 Thông tin hộ",
+                "📈 Tổng hợp",
+            ],
             index=0,
         )
         if st.sidebar.button("Đăng xuất"):
@@ -2467,26 +2494,21 @@ def main():
                 st.session_state.pop(k, None)
             st.rerun()
 
+        # 4. TRUYỀN DỮ LIỆU VÀO ĐÂY (Điểm kết nối mới)
         routes = {
-            "📊 Điều hành thống kê": render_admin_dashboard,
+            "📊 Điều hành thống kê": lambda: render_admin_dashboard(data["ho"], data["kq"]),
             "⚙️ Hệ thống": admin_he_thong,
-            "🔍 Thông tin hộ": admin_thong_tin_ho,
-            "📈 Tổng hợp": admin_tong_hop,
+            "🔍 Thông tin hộ": lambda: admin_thong_tin_ho(data["kq"]),
+            "📈 Tổng hợp": lambda: admin_tong_hop(data["kq"]),
         }
-        # Truyền data vào hàm route nếu cần thiết
-        if menu == "📊 Điều hành thống kê":
-            routes[menu](data["ho"], data["kq"])
-        else:
-            routes[menu](data["kq"])
-            
+        routes[menu]()
     else:
+        # (Giữ nguyên logic cũ cho Điều tra viên)
         if st.session_state.get("bat_doi_mk"):
             page_doi_mat_khau()
             return
-            
         st.sidebar.markdown("**Chế độ điều tra viên**")
         st.sidebar.markdown(f"**Mã ĐTV:** {user['ma']}")
-        
         if user.get("so_ho"):
             st.sidebar.caption(f"Hộ mẫu cần điều tra: {user['so_ho']}/{SO_HO_MAU}")
         st.sidebar.caption("Nhập liệu phiếu hỏi thu nhập tại hiện trường")
