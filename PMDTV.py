@@ -41,7 +41,15 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
+@st.cache_data(ttl=600)
+def load_all_data_sync():
+    """Gom tất cả dữ liệu từ Google Sheets vào 1 biến duy nhất."""
+    return {
+        "ho": read_sheet(SHEETS["danh_sach_ho"], silent=True),
+        "kq": read_sheet(SHEETS["ket_qua"], silent=True),
+        "dtv": read_sheet(SHEETS["danh_sach_dtv"], silent=True),
+        "acc": read_sheet(SHEETS["account"], silent=True)
+    }
 NAVY_PRIMARY = "#0d2137"
 NAVY_ACCENT = "#1a4a7a"
 NAVY_LIGHT = "#e8eef5"
@@ -156,6 +164,16 @@ SHEETS = {
     "phan_cong": "PhanCong",
     "ket_qua": "KetQua",
 }
+
+@st.cache_data(ttl=600)
+def load_all_data_sync():
+    """Gom tất cả dữ liệu từ Google Sheets vào 1 biến duy nhất."""
+    return {
+        "ho": read_sheet(SHEETS["danh_sach_ho"], silent=True),
+        "kq": read_sheet(SHEETS["ket_qua"], silent=True),
+        "dtv": read_sheet(SHEETS["danh_sach_dtv"], silent=True),
+        "acc": read_sheet(SHEETS["account"], silent=True)
+    }
 
 # --- QĐ 1099 / Phần B: 7 nguồn thu nhập ---
 ADMIN_MA = "ADMIN"
