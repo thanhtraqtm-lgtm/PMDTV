@@ -2454,6 +2454,11 @@ def main():
     # 2. TẢI DỮ LIỆU
     with st.spinner("Đang tải dữ liệu hệ thống..."):
         data = load_all_data_sync()
+    
+    # Kiểm tra dữ liệu để tránh lỗi NoneType
+    if data["ho"] is None or data["kq"] is None:
+        st.error("Không tải được dữ liệu. Vui lòng kiểm tra lại Google Sheets.")
+        st.stop()
 
     # 3. LOGIC ĐĂNG NHẬP
     if "user" not in st.session_state:
@@ -2462,7 +2467,7 @@ def main():
 
     user = st.session_state["user"]
     
-    # MỚI: Menu ngang
+    # 4. MENU NGANG
     selected = option_menu(
         menu_title=None, 
         options=["Điều hành thống kê", "Hệ thống", "Thông tin hộ", "Tổng hợp"],
@@ -2470,33 +2475,28 @@ def main():
         orientation="horizontal"
     )
     
-    # Nút Đăng xuất đặt cạnh menu cho gọn
     if st.button("Đăng xuất"):
         for k in ("user", "bat_doi_mk"):
             st.session_state.pop(k, None)
         st.rerun()
 
-    # 4. LOGIC ĐIỀU HÀNH
+    # 5. LOGIC ĐIỀU HÀNH (Đã kiểm tra tham số)
     if user["role"] == "admin":
-        routes = {
-            "Điều hành thống kê": render_admin_dashboard,
-            "Hệ thống": admin_he_thong,
-            "Thông tin hộ": admin_thong_tin_ho,
-            "Tổng hợp": admin_tong_hop,
-        }
-        
-        if selected in routes:
-            if selected == "Điều hành thống kê":
-                routes[selected](data["ho"], data["kq"])
-            else:
-                routes[selected](data["kq"])
+        # Dictionary định nghĩa hàm và số tham số cần thiết
+        if selected == "Điều hành thống kê":
+            render_admin_dashboard(data["ho"], data["kq"])
+        elif selected == "Hệ thống":
+            admin_he_thong(data["kq"])
+        elif selected == "Thông tin hộ":
+            admin_thong_tin_ho(data["kq"])
+        elif selected == "Tổng hợp":
+            admin_tong_hop(data["kq"])
     else:
         # Logic cho Điều tra viên
         if st.session_state.get("bat_doi_mk"):
             page_doi_mat_khau()
         else:
             st.markdown(f"**Mã ĐTV:** {user['ma']}")
-            # Nếu cần giữ lại tính năng đổi mã ĐTV, bạn dán đoạn selectbox cũ vào đây
             dtv_nhap_phieu()
 
 if __name__ == "__main__":
