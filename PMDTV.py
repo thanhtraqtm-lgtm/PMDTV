@@ -2313,3 +2313,5 @@ def main():
             admin_tien_do() # Gọi hàm tiến độ bạn vừa chèn
     else:
         dtv_nhap_phieu()
+if __name__ == "__main__":
+    main()
