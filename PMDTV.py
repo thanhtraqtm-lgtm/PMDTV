@@ -113,29 +113,25 @@ def render_header(title=""):
     # Đóng thẻ div sticky-header (Dòng này cực kỳ quan trọng)
     st.markdown('</div>', unsafe_allow_html=True)
 def apply_custom_style() -> None:
-    """Giao diện Navy chủ đạo — ép sát lên trên cùng."""
+    """Giao diện Navy chủ đạo - Đã fix lỗi menu ngang bị nhảy."""
     st.markdown(
         f"""
         <style>
-        /* 1. Ẩn thanh header và toolbar mặc định */
-        [data-testid="stHeader"], [data-testid="stToolbar"] {{ display: none !important; }}
+        /* 1. Ẩn thanh header mặc định */
+        [data-testid="stHeader"] {{ display: none !important; }}
 
-        /* 2. Ép container chính sát đỉnh màn hình */
+        /* 2. Ép container chính lên sát đỉnh nhưng vẫn chừa chỗ cho menu ngang */
         .block-container {{ 
-            padding-top: 0rem !important; 
+            padding-top: 1rem !important; 
             padding-bottom: 0rem !important;
-            max-width: 95% !important; /* Dùng 95% để nội dung thoáng hơn */
+            max-width: 95% !important;
         }}
 
-        /* 3. XÓA BỎ MỌI KHOẢNG CÁCH THỪA CỦA STREAMLIT */
-        [data-testid="stAppViewContainer"] {{ padding-top: 0rem !important; }}
-        .stMain {{ padding-top: 0rem !important; }}
-        
-        /* Đảm bảo không có khoảng cách dư thừa từ các block bên trong */
-        div.stApp {{ padding-top: 0px !important; }}
+        /* 3. ĐẢM BẢO MENU NGANG KHÔNG BỊ ÉP DỌC */
+        [data-testid="stSidebar"] {{ display: none; }} /* Ẩn sidebar nếu bạn không dùng */
+        div.row-widget.stRadio > div {{ flex-direction: row; }} 
 
-        /* Các style khác giữ nguyên */
-        hr {{ margin: 5px 0 !important; border: 0 !important; border-top: 1px solid #e0e0e0 !important; }}
+        /* Các style hỗ trợ khác */
         :root {{ --navy: {NAVY_PRIMARY}; --navy-accent: {NAVY_ACCENT}; --navy-light: {NAVY_LIGHT}; }}
         
         .card-box {{ 
@@ -144,6 +140,7 @@ def apply_custom_style() -> None:
             border-radius: 12px; 
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             border: 1px solid #e8edf3;
+            margin-bottom: 1rem;
         }}
         </style>
         """,
