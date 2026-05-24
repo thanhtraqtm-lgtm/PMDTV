@@ -2278,58 +2278,38 @@ def dtv_nhap_phieu():
 # ---------------------------------------------------------------------------
 def main():
     apply_custom_style()
-    
-    # Kiểm tra đăng nhập
+    render_header()
+    data = load_all_data_sync() # Tải dữ liệu 1 lần
+
     if "user" not in st.session_state:
         page_login()
         return
 
     user = st.session_state["user"]
-    st.sidebar.markdown(
-        f'<div class="main-header"><b>MENU ĐIỀU KHIỂN</b><br><small>{user["ma"]}</small></div>',
-        unsafe_allow_html=True,
+    
+    # MENU NGANG CỦA BẠN
+    selected = option_menu(
+        menu_title=None, 
+        options=["Điều hành thống kê", "Hệ thống", "Thông tin hộ", "Tổng hợp", "Tiến độ"],
+        icons=["bar-chart", "gear", "search", "graph-up", "clipboard-data"],
+        orientation="horizontal"
     )
+    
+    if st.button("Đăng xuất"):
+        st.session_state.clear()
+        st.rerun()
 
-    if user["role"] == "admin" and is_admin(str(user.get("ma", ""))):
-        # THÊM MỤC "📊 Tiến độ" VÀO DANH SÁCH
-        menu = st.sidebar.radio(
-            "Menu quản trị",
-            [
-                "📊 Điều hành thống kê", 
-                "⚙️ Hệ thống", 
-                "🔍 Thông tin hộ", 
-                "📈 Tổng hợp",
-                "📊 Tiến độ"
-            ],
-            index=0,
-        )
-        
-        if st.sidebar.button("Đăng xuất"):
-            for k in ("user", "bat_doi_mk"):
-                st.session_state.pop(k, None)
-            st.rerun()
-
-        # ĐIỀU HƯỚNG GỌI HÀM (Đảm bảo không truyền thừa tham số)
-        if menu == "📊 Điều hành thống kê":
-            # Hàm này cần dữ liệu, chúng ta đọc trực tiếp trong hàm hoặc lấy từ sheet
-            df_ho = read_sheet(SHEETS["danh_sach_ho"], silent=True)
-            df_kq = read_sheet(SHEETS["ket_qua"], silent=True)
-            render_admin_dashboard(df_ho, df_kq)
-        elif menu == "⚙️ Hệ thống":
+    # LOGIC GỌI HÀM (Đảm bảo không bị lỗi tham số)
+    if user["role"] == "admin":
+        if selected == "Điều hành thống kê":
+            render_admin_dashboard(data["ho"], data["kq"])
+        elif selected == "Hệ thống":
             admin_he_thong()
-        elif menu == "🔍 Thông tin hộ":
+        elif selected == "Thông tin hộ":
             admin_thong_tin_ho()
-        elif menu == "📈 Tổng hợp":
+        elif selected == "Tổng hợp":
             admin_tong_hop()
-        elif menu == "📊 Tiến độ":
-            admin_tien_do()
-            
+        elif selected == "Tiến độ":
+            admin_tien_do() # Gọi hàm tiến độ bạn vừa chèn
     else:
-        # Logic cho ĐTV
-        if st.session_state.get("bat_doi_mk"):
-            page_doi_mat_khau()
-        else:
-            dtv_nhap_phieu()
-
-if __name__ == "__main__":
-    main()
+        dtv_nhap_phieu()
