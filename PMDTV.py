@@ -19,6 +19,19 @@ import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 from streamlit_option_menu import option_menu
+from contextlib import contextmanager
+
+# Đảm bảo hàm này nằm ở lề trái (không thụt vào trong def nào cả)
+@contextmanager
+def card_container(title: str | None = None):
+    """Khối nội dung bo góc 10px + đổ bóng."""
+    navy_primary = "#0d2137" 
+    tieu_de = f"<p style='margin:0 0 0.75rem;font-weight:600;color:{navy_primary};'>{title}</p>" if title else ""
+    st.markdown(f'<div class="card-box">{tieu_de}', unsafe_allow_html=True)
+    try:
+        yield
+    finally:
+        st.markdown("</div>", unsafe_allow_html=True)
 # --- BẮT ĐẦU ĐOẠN CẦN THÊM ---
 try:
     from streamlit_geolocation import streamlit_geolocation
@@ -1861,8 +1874,8 @@ def render_admin_dashboard(df_ho, df_kq) -> None:
         <style>
             /* Căn giữa tiêu đề và các khối */
             .main .block-container {
-                max-width: 80%; /* Giới hạn độ rộng để không bị trải dài quá mức */
-                margin: 0 auto; /* Tự động căn giữa */
+                max-width: 80%; 
+                margin: 0 auto; 
             }
             /* Căn giữa chữ */
             h2, h3, .stMetric {
@@ -1875,7 +1888,23 @@ def render_admin_dashboard(df_ho, df_kq) -> None:
                 align-items: center;
             }
         </style>
-    """, unsafe_allow_html=True)   
+    """, unsafe_allow_html=True)
+
+    # Lấy dữ liệu mẫu để hiển thị (ví dụ)
+    work = _df_mau_tien_do(df_ho, df_kq)
+    tong_ho = len(work) if not work.empty else 0
+    da_xong = int(work["HoanThanh"].sum()) if not work.empty and "HoanThanh" in work.columns else 0
+    ty_le = round(da_xong / tong_ho * 100, 1) if tong_ho else 0.0
+
+    # --- HIỂN THỊ CÁC CHỈ TIÊU LÊN BẰNG CARD_CONTAINER ---
+    with card_container("Dashboard Điều hành"):
+        k1, k2, k3 = st.columns(3)
+        k1.metric("Tổng hộ", f"{tong_ho:,}")
+        k2.metric("Tiến độ", f"{ty_le}%")
+        k3.metric("Hoàn thành", f"{da_xong:,}")
+
+    # Tiếp tục code cũ của bạn bên dưới...
+    st.write("Dữ liệu chi tiết đang được tải...")
 
     # 4. DASHBOARD (Các chỉ số)
     # LƯU Ý: Không dùng read_sheet ở đây nữa, dùng tham số df_ho, df_kq truyền vào từ main
