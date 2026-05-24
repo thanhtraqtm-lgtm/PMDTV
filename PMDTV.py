@@ -53,21 +53,6 @@ def apply_custom_style() -> None:
     """Giao diện Navy chủ đạo — bo góc, đổ bóng, tối giản và responsive."""
     st.markdown(
         f"""
-        <!-- Top Sticky Header Panel -->
-        <div class="fixed-top-container">
-            <div class="banner-wrapper">
-                <img class="banner-img" src="image/panel.png" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=2000&h=300';" />
-                <div class="banner-overlay"></div>
-                <div class="banner-content">
-                    <div class="logo-circle">🌾</div>
-                    <div class="text-group">
-                        <h1 class="main-title">HỆ THỐNG ĐIỀU TRA THU NHẬP HỘ PMDTV</h1>
-                        <p class="subtitle">Chương trình Khảo sát Thu nhập hộ nông thôn & Đánh giá phân tích Kinh tế Nông nghiệp | QĐ 1099 | Tổng cục Thống kê</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <style>
         :root {{
             --navy: {NAVY_PRIMARY};
@@ -87,93 +72,14 @@ def apply_custom_style() -> None:
             background: #f8fafc;
         }}
         
-        /* Spacing for main block container underneath sticky header */
+        /* Spacing for main block container */
         .main .block-container {{
-            padding-top: 155px !important;
+            padding-top: 1.5rem !important;
             padding-bottom: 3rem !important;
             max-width: 1200px !important;
             margin: 0 auto !important;
         }}
         
-        /* Fixed Header Styles */
-        .fixed-top-container {{
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 99999;
-            background: #0d2137;
-            box-shadow: 0 4px 20px rgba(13,33,55,0.18);
-        }}
-        
-        .banner-wrapper {{
-            position: relative;
-            height: 105px;
-            width: 100%;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-        }}
-        
-        .banner-img {{
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            position: absolute;
-            top: 0;
-            left: 0;
-        }}
-        
-        .banner-overlay {{
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(13, 33, 55, 0.55) 0%, rgba(13, 33, 55, 0.92) 100%);
-            z-index: 1;
-        }}
-        
-        .banner-content {{
-            position: relative;
-            z-index: 2;
-            padding: 0 35px;
-            display: flex;
-            align-items: center;
-            gap: 18px;
-            color: #ffffff;
-            width: 100%;
-        }}
-        
-        .logo-circle {{
-            font-size: 28px;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(12px);
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-            border: 1px solid rgba(255,255,255,0.25);
-        }}
-        
-        .main-title {{
-            margin: 0;
-            font-size: 19px;
-            font-weight: 800;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            color: #ffffff !important;
-            line-height: 1.2;
-        }}
-        
-        .subtitle {{
-            margin: 3px 0 0 0;
-            font-size: 11px;
-            color: #cbd5e0;
-            font-weight: 500;
-            letter-spacing: 0.02em;
-        }}
-
         /* Clean Modern App UI Components */
         .card-box {{
             background: #ffffff;
@@ -308,21 +214,7 @@ def apply_custom_style() -> None:
         
         @media (max-width: 768px) {{
             .main .block-container {{
-                padding-top: 170px !important;
-            }}
-            .banner-content {{
-                padding: 0 15px;
-            }}
-            .logo-circle {{
-                width: 40px;
-                height: 40px;
-                font-size: 22px;
-            }}
-            .main-title {{
-                font-size: 14px;
-            }}
-            .subtitle {{
-                font-size: 9px;
+                padding-top: 1.5rem !important;
             }}
             div[data-testid="stTabs"] button {{
                 font-size: 11.5px !important;
@@ -332,6 +224,28 @@ def apply_custom_style() -> None:
         </style>
         """,
         unsafe_allow_html=True,
+    )
+
+def hien_thi_banner() -> None:
+    """Hiển thị ảnh ngang nằm ở trên cùng của trang (tương thích GitHub image/panel.png)"""
+    import os
+    image_path = "image/panel.png"
+    # Dùng ảnh dự phòng của Unsplash nếu file chưa tồn tại local để tránh lỗi hiển thị trống
+    fallback_url = "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=2000&h=300"
+    
+    if os.path.exists(image_path):
+        st.image(image_path, use_container_width=True)
+    else:
+        st.image(fallback_url, use_container_width=True)
+        
+    st.markdown(
+        """
+        <div style="text-align: center; margin-top: -10px; margin-bottom: 25px;">
+            <h2 style="color:#0d2137; font-weight:800; margin-bottom: 5px; font-size: 24px; text-transform: uppercase;">HỆ THỐNG ĐIỀU TRA THU NHẬP HỘ PMDTV</h2>
+            <p style="color:#64748b; font-size: 13px; font-weight: 500; margin: 0;">Chương trình Khảo sát Thu nhập hộ nông thôn & Đánh giá phân tích Kinh tế Nông nghiệp | QĐ 1099 | Tổng cục Thống kê</p>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
 
 @contextmanager
@@ -1121,6 +1035,7 @@ def tao_dong_ket_qua_qd1099(
 # ---------------------------------------------------------------------------
 def page_login():
     """Giao diện cửa đăng nhập vai trò."""
+    hien_thi_banner()
     left, col2, right = st.columns([1, 2, 1])
     with col2:
         with card_container("ĐĂNG NHẬP HỆ THỐNG PMDTV"):
@@ -1255,29 +1170,324 @@ def dtv_nhap_phieu():
 # ---------------------------------------------------------------------------
 # 12. RUNTIME GRAPHICS & TIẾN ĐỘ THỐNG KÊ (DASHBOARD)
 # ---------------------------------------------------------------------------
+def check_or_get_ket_qua() -> pd.DataFrame:
+    df_kq = read_sheet(SHEETS["ket_qua"], silent=True)
+    if df_kq.empty or len(df_kq) == 0:
+        # Tạo bộ dữ liệu mẫu chi tiết của 7 nguồn thu nhập tương thích QĐ 1099 để mô phỏng biểu đồ
+        mock_data = [
+            {
+                "MaDTV": "DTV01", "HoSo": "1001", "MaTKCS": "Huyện Sơn Tịnh", "Xa": "Xã Tịnh Giang", "DiaBan": "Địa bàn 01", "TenChuHo": "Nguyễn Văn An", "NhanKhauTT": 4, 
+                "ThuLuong": 8500.0, "Thu_TrongTrot": 4000.0, "Thu_ChanNuoi": 3000.0, "Thu_LamNghiep": 0.0, "Thu_ThuySan": 0.0, "Thu_SXKD": 0.0, "ThuKhac": 1500.0, 
+                "TongThuNhap": 17000.0, "ThuBQDauNguoi": 4250.0, "NgayNhap": "2026-05-24 08:30:00"
+            },
+            {
+                "MaDTV": "DTV01", "HoSo": "1002", "MaTKCS": "Huyện Sơn Tịnh", "Xa": "Xã Tịnh Giang", "DiaBan": "Địa bàn 01", "TenChuHo": "Phan Thị Bình", "NhanKhauTT": 3, 
+                "ThuLuong": 0.0, "Thu_TrongTrot": 12000.0, "Thu_ChanNuoi": 8000.0, "Thu_LamNghiep": 1500.0, "Thu_ThuySan": 0.0, "Thu_SXKD": 4000.0, "ThuKhac": 2000.0,
+                "TongThuNhap": 27500.0, "ThuBQDauNguoi": 9166.7, "NgayNhap": "2026-05-24 09:12:00"
+            },
+            {
+                "MaDTV": "DTV02", "HoSo": "1003", "MaTKCS": "Huyện Bình Sơn", "Xa": "Xã Bình Thạnh", "DiaBan": "Địa bàn 02", "TenChuHo": "Lê Văn Cường", "NhanKhauTT": 5, 
+                "ThuLuong": 12000.0, "Thu_TrongTrot": 0.0, "Thu_ChanNuoi": 0.0, "Thu_LamNghiep": 0.0, "Thu_ThuySan": 6000.0, "Thu_SXKD": 10000.0, "ThuKhac": 1000.0,
+                "TongThuNhap": 29000.0, "ThuBQDauNguoi": 5800.0, "NgayNhap": "2026-05-24 10:05:00"
+            },
+            {
+                "MaDTV": "DTV02", "HoSo": "1004", "MaTKCS": "Huyện Bình Sơn", "Xa": "Xã Bình Dương", "DiaBan": "Địa bàn 03", "TenChuHo": "Phạm Văn Danh", "NhanKhauTT": 2, 
+                "ThuLuong": 7500.0, "Thu_TrongTrot": 1000.0, "Thu_ChanNuoi": 1500.0, "Thu_LamNghiep": 0.0, "Thu_ThuySan": 0.0, "Thu_SXKD": 0.0, "ThuKhac": 500.0,
+                "TongThuNhap": 10500.0, "ThuBQDauNguoi": 5250.0, "NgayNhap": "2026-05-24 11:22:00"
+            },
+            {
+                "MaDTV": "DTV03", "HoSo": "1005", "MaTKCS": "Huyện Nghĩa Hành", "Xa": "Xã Hành Minh", "DiaBan": "Địa bàn 04", "TenChuHo": "Đỗ Thị Xuân", "NhanKhauTT": 4, 
+                "ThuLuong": 10000.0, "Thu_TrongTrot": 5000.0, "Thu_ChanNuoi": 4000.0, "Thu_LamNghiep": 2000.0, "Thu_ThuySan": 1500.0, "Thu_SXKD": 8000.0, "ThuKhac": 3000.0,
+                "TongThuNhap": 33500.0, "ThuBQDauNguoi": 8375.0, "NgayNhap": "2026-05-24 13:40:00"
+            },
+            {
+                "MaDTV": "DTV03", "HoSo": "1006", "MaTKCS": "Huyện Nghĩa Hành", "Xa": "Xã Hành Minh", "DiaBan": "Địa bàn 05", "TenChuHo": "Trần Văn Định", "NhanKhauTT": 4, 
+                "ThuLuong": 6000.0, "Thu_TrongTrot": 8000.0, "Thu_ChanNuoi": 6000.0, "Thu_LamNghiep": 0.0, "Thu_ThuySan": 0.0, "Thu_SXKD": 0.0, "ThuKhac": 1000.0,
+                "TongThuNhap": 21000.0, "ThuBQDauNguoi": 5250.0, "NgayNhap": "2026-05-24 14:15:00"
+            },
+        ]
+        df_kq = pd.DataFrame(mock_data)
+        st.session_state["using_mock_statistics"] = True
+    else:
+        st.session_state["using_mock_statistics"] = False
+        
+    for col in ["TongThuNhap", "ThuBQDauNguoi", "NhanKhauTT", "ThuLuong", "Thu_TrongTrot", "Thu_ChanNuoi", "Thu_LamNghiep", "Thu_ThuySan", "Thu_SXKD", "ThuKhac"]:
+        if col in df_kq.columns:
+            df_kq[col] = pd.to_numeric(df_kq[col], errors="coerce").fillna(0.0)
+            
+    return df_kq
+
 def render_admin_dashboard():
-    st.write("### 📊 Thống kê kiểm soát tiến độ & Báo cáo kết quả")
+    st.write("### 📊 Đồ thị Dashboard kiểm soát thu nhập")
+    
+    df_kq = check_or_get_ket_qua()
+    df_ho = read_sheet(SHEETS["danh_sach_ho"], silent=True)
+    
+    if df_ho.empty:
+         total_samples = len(df_kq)
+    else:
+         total_samples = len(ho_mau_can_dieu_tra(df_ho))
+         if total_samples == 0:
+             total_samples = len(df_kq)
+             
+    completed = len(df_kq) if not df_kq.empty else 0
+    ratio = round(completed / max(1, total_samples) * 100, 1) if total_samples > 0 else 0
+    
+    if st.session_state.get("using_mock_statistics", False):
+        st.info("💡 Hệ thống đang hiển thị dữ liệu minh hoạ trực quan. Khi có dữ liệu điều tra thực tế từ Google Sheets, hệ thống sẽ tự động cập nhật.")
+        
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Tổng quy mô hộ mẫu chỉ định", f"{total_samples} hộ")
+    c2.metric("Số phiếu hoàn thành", f"{completed} phiếu")
+    c3.metric("Tỷ lệ phản hồi", f"{ratio}%")
+    
+    col_g1, col_g2 = st.columns(2)
+    
+    with col_g1:
+        st.write("#### Phân bố thu nhập bình quân đầu người")
+        fig_hist = px.histogram(
+            df_kq, 
+            x="ThuBQDauNguoi", 
+            nbins=15, 
+            labels={"ThuBQDauNguoi": "Thu nhập bình quân đầu người (nghìnđ/tháng)"},
+            color_discrete_sequence=["#1a4a7a"],
+            title="Biểu đồ phân phối tần số thu nhập đầu người"
+        )
+        st.plotly_chart(fig_hist, use_container_width=True)
+        
+    with col_g2:
+        st.write("#### Cơ cấu tỉ trọng các nguồn thu nhập")
+        sources_data = []
+        for key, name in BAO_CAO_7_NGUON:
+            val = pd.to_numeric(df_kq.get(key, 0.0), errors="coerce").fillna(0.0).mean()
+            sources_data.append({"Nguồn": name, "Bình quân (nghìnđ/tháng)": val})
+            
+        df_sources = pd.DataFrame(sources_data)
+        fig_pie = px.pie(
+            df_sources, 
+            values="Bình quân (nghìnđ/tháng)", 
+            names="Nguồn",
+            color_discrete_sequence=px.colors.qualitative.Pastel,
+            title="Tỉ trọng đóng góp của 7 nguồn thu nhập"
+        )
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+def admin_tien_do():
+    st.write("### 📈 Thống kê tiến độ điều tra thực địa")
     df_ho = read_sheet(SHEETS["danh_sach_ho"])
     df_kq = read_sheet(SHEETS["ket_qua"])
     
     if df_ho.empty:
-        st.info("Danh sách dữ liệu mốc hiện trạng trống.")
+        st.warning("Danh sách dữ liệu mốc hiện trạng trống.")
         return
         
-    total_samples = len(ho_mau_can_dieu_tra(df_ho))
+    df_mau = ho_mau_can_dieu_tra(df_ho)
+    if df_mau.empty:
+        st.info("Hệ thống chưa gán mẫu điều tra chỉ định cho bất kỳ ĐTV nào.")
+        return
+        
+    total_mau = len(df_mau)
     completed = len(df_kq) if not df_kq.empty else 0
-    ratio = round(completed / max(1, total_samples) * 100, 1)
+    ton_dong = max(0, total_mau - completed)
+    ti_le = round(completed / max(1, total_mau) * 100, 1)
     
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Tổng Quy mô Hộ mẫu", f"{total_samples} hộ")
-    c2.metric("Phiếu hoàn thành", f"{completed} phiếu")
-    c3.metric("Tỷ lệ phản hồi", f"{ratio}%")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Mẫu chỉ định", f"{total_mau} hộ")
+    col2.metric("Đã hoàn thành", f"{completed} phiếu")
+    col3.metric("Còn lại", f"{ton_dong} hộ")
+    col4.metric("Tỷ lệ tiến độ đạt", f"{ti_le}%")
     
-    if not df_kq.empty and "TongThuNhap" in df_kq.columns:
-        st.write("#### Cơ cấu phân bổ thu nhập bình quân đầu người")
-        df_kq["ThuBQDauNguoi"] = pd.to_numeric(df_kq["ThuBQDauNguoi"], errors="coerce")
-        fig = px.histogram(df_kq, x="ThuBQDauNguoi", nbins=20, title="Biểu đồ phân phối thu nhập đầu người (nghìn đồng/tháng)")
-        st.plotly_chart(fig, use_container_width=True)
+    t_dtv, t_xa = st.tabs(["👨‍💻 Theo Điều tra viên (ĐTV)", "🏡 Theo Xã cư trú"])
+    
+    with t_dtv:
+        df_mau_dtv = df_mau.groupby("MaDTV").size().reset_index(name="MauChiDinh")
+        if not df_kq.empty:
+            df_done_dtv = df_kq.groupby("MaDTV").size().reset_index(name="KqHoanThanh")
+            df_tien_do = pd.merge(df_mau_dtv, df_done_dtv, on="MaDTV", how="left").fillna(0)
+        else:
+            df_tien_do = df_mau_dtv.copy()
+            df_tien_do["KqHoanThanh"] = 0
+            
+        df_tien_do["KqHoanThanh"] = df_tien_do["KqHoanThanh"].astype(int)
+        df_tien_do["ConLai"] = (df_tien_do["MauChiDinh"] - df_tien_do["KqHoanThanh"]).clip(lower=0)
+        df_tien_do["TienDo"] = (df_tien_do["KqHoanThanh"] / df_tien_do["MauChiDinh"] * 100).round(1)
+        
+        df_show = df_tien_do.copy()
+        df_show.columns = ["Mã điều tra viên", "Sản lượng mẫu được giao", "Chỉ tiêu hoàn thành", "Số hộ chưa nhập", "Tiến độ đạt (%)"]
+        hien_dataframe_an_toan(df_show)
+        
+        fig_dtv = px.bar(
+            df_tien_do,
+            x="MaDTV",
+            y="TienDo",
+            range_y=[0, 105],
+            labels={"TienDo": "Tiến độ hoàn thành mẫu (%)", "MaDTV": "Điều tra viên"},
+            title="Biểu đồ trực quan so sánh tiến độ hoàn thành các điều tra viên"
+        )
+        st.plotly_chart(fig_dtv, use_container_width=True)
+        
+    with t_xa:
+        df_mau_xa = df_mau.groupby("Xa").size().reset_index(name="MauChiDinh")
+        if not df_kq.empty:
+            df_done_xa = df_kq.groupby("Xa").size().reset_index(name="KqHoanThanh")
+            df_tien_do_xa = pd.merge(df_mau_xa, df_done_xa, on="Xa", how="left").fillna(0)
+        else:
+            df_tien_do_xa = df_mau_xa.copy()
+            df_tien_do_xa["KqHoanThanh"] = 0
+            
+        df_tien_do_xa["KqHoanThanh"] = df_tien_do_xa["KqHoanThanh"].astype(int)
+        df_tien_do_xa["ConLai"] = (df_tien_do_xa["MauChiDinh"] - df_tien_do_xa["KqHoanThanh"]).clip(lower=0)
+        df_tien_do_xa["TienDo"] = (df_tien_do_xa["KqHoanThanh"] / df_tien_do_xa["MauChiDinh"] * 100).round(1)
+        
+        df_show_xa = df_tien_do_xa.copy()
+        df_show_xa.columns = ["Xã cư trú", "Sản lượng mẫu được giao", "Chỉ tiêu hoàn thành", "Số hộ chưa nhập", "Tiến độ đạt (%)"]
+        hien_dataframe_an_toan(df_show_xa)
+
+def admin_thong_ke_tong_hop():
+    st.write("### 📋 Thống kê tổng hợp thu nhập & Đánh giá so sánh")
+    
+    df_kq = check_or_get_ket_qua()
+    if df_kq.empty:
+        st.warning("Hiện chưa có dữ liệu báo cáo kết quả.")
+        return
+        
+    if st.session_state.get("using_mock_statistics", False):
+        st.info("💡 Hệ thống đang hiển thị dữ liệu minh hoạ trực quan. Khi có dữ liệu điều tra thực tế từ Google Sheets, hệ thống sẽ tự động cập nhật.")
+        
+    t1, t2, t3, t4 = st.tabs([
+        "🏢 Theo Cấp TKCS (Huyện/Thị)", 
+        "🏡 Theo Xã cư trú", 
+        "📍 Theo Địa bàn khảo sát",
+        "🎛️ So sánh thu nhập bình quân"
+    ])
+    
+    # 1. Cấp TKCS
+    with t1:
+        st.write("#### Tổng hợp thu nhập bình quân theo Đơn vị TKCS (Mã Huyện)")
+        df_tkcs = df_kq.groupby("MaTKCS").agg(
+            SoHo=("HoSo", "count"),
+            TongNhanKhau=("NhanKhauTT", "sum"),
+            ThuNhapBQ_Ho=("TongThuNhap", "mean"),
+            ThuNhapBQ_DauNguoi=("ThuBQDauNguoi", "mean")
+        ).reset_index()
+        
+        df_tkcs_display = df_tkcs.copy()
+        df_tkcs_display["Thu nhập BQ Hộ/tháng (Thìn đ)"] = df_tkcs_display["ThuNhapBQ_Ho"].round(1).map('{:,.1f}'.format)
+        df_tkcs_display["Thu nhập BQ Đầu người/tháng (Thìn đ)"] = df_tkcs_display["ThuNhapBQ_DauNguoi"].round(1).map('{:,.1f}'.format)
+        df_tkcs_display["Số hộ hoàn tất"] = df_tkcs_display["SoHo"]
+        df_tkcs_display["Nhân khẩu quy mô"] = df_tkcs_display["TongNhanKhau"]
+        
+        hien_dataframe_an_toan(df_tkcs_display[["MaTKCS", "Số hộ hoàn tất", "Nhân khẩu quy mô", "Thu nhập BQ Hộ/tháng (Thìn đ)", "Thu nhập BQ Đầu người/tháng (Thìn đ)"]])
+        
+        fig_tkcs = px.bar(
+            df_tkcs,
+            x="MaTKCS",
+            y=["ThuNhapBQ_Ho", "ThuNhapBQ_DauNguoi"],
+            barmode="group",
+            labels={"value": "Thu nhập bình quân (nghìnđ/tháng)", "variable": "Loại chỉ tiêu"},
+            color_discrete_sequence=["#1a4a7a", "#0284c7"],
+            title="Biểu đồ so sánh thu nhập bình quân Hộ và Đầu người theo Cấp TKCS"
+        )
+        st.plotly_chart(fig_tkcs, use_container_width=True)
+
+    # 2. Theo Xã
+    with t2:
+        st.write("#### Tổng hợp thu nhập bình quân theo Xã phường cư trú")
+        df_xa = df_kq.groupby("Xa").agg(
+            SoHo=("HoSo", "count"),
+            TongNhanKhau=("NhanKhauTT", "sum"),
+            ThuNhapBQ_Ho=("TongThuNhap", "mean"),
+            ThuNhapBQ_DauNguoi=("ThuBQDauNguoi", "mean")
+        ).reset_index()
+        
+        df_xa_display = df_xa.copy()
+        df_xa_display["Thu nhập BQ Hộ/tháng (Thìn đ)"] = df_xa_display["ThuNhapBQ_Ho"].round(1).map('{:,.1f}'.format)
+        df_xa_display["Thu nhập BQ Đầu người/tháng (Thìn đ)"] = df_xa_display["ThuNhapBQ_DauNguoi"].round(1).map('{:,.1f}'.format)
+        df_xa_display["Số hộ hoàn tất"] = df_xa_display["SoHo"]
+        df_xa_display["Nhân khẩu quy mô"] = df_xa_display["TongNhanKhau"]
+        
+        hien_dataframe_an_toan(df_xa_display[["Xa", "Số hộ hoàn tất", "Nhân khẩu quy mô", "Thu nhập BQ Hộ/tháng (Thìn đ)", "Thu nhập BQ Đầu người/tháng (Thìn đ)"]])
+        
+        fig_xa = px.bar(
+            df_xa,
+            x="Xa",
+            y="ThuNhapBQ_DauNguoi",
+            color="Xa",
+            labels={"ThuNhapBQ_DauNguoi": "Thu nhập bình quân đầu người (nghìnđ/tháng)"},
+            title="Biểu đồ phân bố thu nhập bình quân đầu người thu nhận theo các Xã"
+        )
+        st.plotly_chart(fig_xa, use_container_width=True)
+
+    # 3. Theo Địa bàn
+    with t3:
+        st.write("#### Tổng hợp thu nhập bình quân theo Địa bàn được khoanh vùng")
+        df_db = df_kq.groupby("DiaBan").agg(
+            SoHo=("HoSo", "count"),
+            TongNhanKhau=("NhanKhauTT", "sum"),
+            ThuNhapBQ_Ho=("TongThuNhap", "mean"),
+            ThuNhapBQ_DauNguoi=("ThuBQDauNguoi", "mean")
+        ).reset_index()
+        
+        df_db_display = df_db.copy()
+        df_db_display["Thu nhập BQ Hộ/tháng (Thìn đ)"] = df_db_display["ThuNhapBQ_Ho"].round(1).map('{:,.1f}'.format)
+        df_db_display["Thu nhập BQ Đầu người/tháng (Thìn đ)"] = df_db_display["ThuNhapBQ_DauNguoi"].round(1).map('{:,.1f}'.format)
+        df_db_display["Số hộ hoàn tất"] = df_db_display["SoHo"]
+        df_db_display["Nhân khẩu quy mô"] = df_db_display["TongNhanKhau"]
+        
+        hien_dataframe_an_toan(df_db_display[["DiaBan", "Số hộ hoàn tất", "Nhân khẩu quy mô", "Thu nhập BQ Hộ/tháng (Thìn đ)", "Thu nhập BQ Đầu người/tháng (Thìn đ)"]])
+        
+        fig_db = px.bar(
+            df_db,
+            x="DiaBan",
+            y="ThuNhapBQ_DauNguoi",
+            color="DiaBan",
+            labels={"ThuNhapBQ_DauNguoi": "Thu nhập bình quân đầu người (nghìnđ/tháng)"},
+            title="Biêu đồ so sánh thu nhập bình quân đầu người theo từng Địa bàn cụ thể"
+        )
+        st.plotly_chart(fig_db, use_container_width=True)
+
+    # 4. Trình so sánh chi tiết
+    with t4:
+        st.write("#### Công cụ phân tích, so sánh thu nhập tương tác")
+        loai_so_sanh = st.radio("Chọn cấp độ thống kê so sánh", ["Theo Cấp TKCS (Mã Huyện)", "Theo Cấp Xã phường", "Theo phân tổ Địa bàn"], horizontal=True)
+        
+        if loai_so_sanh == "Theo Cấp TKCS (Mã Huyện)":
+            khoa_tu = "MaTKCS"
+        elif loai_so_sanh == "Theo Cấp Xã phường":
+            khoa_tu = "Xa"
+        else:
+            khoa_tu = "DiaBan"
+            
+        nhom_du_lieu = df_kq.groupby(khoa_tu).agg(
+            Thu_BQ_Ho=("TongThuNhap", "mean"),
+            Thu_BQ_Nguoi=("ThuBQDauNguoi", "mean")
+        ).reset_index()
+        
+        to_hop_lua_chon = nhom_du_lieu[khoa_tu].unique().tolist()
+        tieu_diem = st.multiselect(f"Chọn các đơn vị thuộc nhóm {loai_so_sanh} để đưa lên biểu đồ phân tích trực quan", to_hop_lua_chon, default=to_hop_lua_chon[:3])
+        
+        if len(tieu_diem) > 0:
+            df_so_sanh = nhom_du_lieu[nhom_du_lieu[khoa_tu].isin(tieu_diem)]
+            
+            fig_compare = px.bar(
+                df_so_sanh,
+                x=khoa_tu,
+                y=["Thu_BQ_Ho", "Thu_BQ_Nguoi"],
+                barmode="group",
+                labels={"value": "Thu nhập bình quân (nghìnđ/tháng)", "variable": "Chỉ số"},
+                color_discrete_sequence=["#0d2137", "#0ea5e9"],
+                title=f"Biểu đồ phân tích so sánh trực tiếp các đơn vị thuộc {loai_so_sanh}"
+            )
+            st.plotly_chart(fig_compare, use_container_width=True)
+            
+            # Show formatted table
+            df_so_sanh_display = df_so_sanh.copy()
+            df_so_sanh_display.columns = [loai_so_sanh, "Bình quân Hộ gia đình", "Bình quân Đầu người"]
+            df_so_sanh_display["Bình quân Hộ gia đình"] = df_so_sanh_display["Bình quân Hộ gia đình"].round(1).map('{:,.1f}'.format)
+            df_so_sanh_display["Bình quân Đầu người"] = df_so_sanh_display["Bình quân Đầu người"].round(1).map('{:,.1f}'.format)
+            hien_dataframe_an_toan(df_so_sanh_display)
+        else:
+            st.warning("Vui lòng chọn hoặc điền ít nhất 1 đơn vị để hiển thị so sánh.")
 
 
 # ---------------------------------------------------------------------------
@@ -1290,10 +1500,10 @@ def main():
         
     user = st.session_state["user"]
     
-    # Render horizontal badge and navigation top bar below sticky header spacing
-    st.markdown("""<div class="nav-space-container"></div>""", unsafe_allow_html=True)
+    # Hiển thị ảnh ngang nằm ở trên cùng của trang
+    hien_thi_banner()
     
-    cols = st.columns([2, 4, 1.2])
+    cols = st.columns([2, 4.5, 1.2])
     
     with cols[0]:
         st.markdown(f"""
@@ -1309,10 +1519,15 @@ def main():
     with cols[1]:
         if user["role"] == "admin":
             if "admin_menu" not in st.session_state:
-                st.session_state["admin_menu"] = "📊 Thống kê chung"
+                st.session_state["admin_menu"] = "📊 Đồ thị Dashboard"
             
-            menu_options = ["📊 Thống kê chung", "⚙️ Thiết lập tài khoản / Mẫu"]
-            sub_cols = st.columns(2)
+            menu_options = [
+                "📊 Đồ thị Dashboard", 
+                "⚙️ Thiết lập hệ thống", 
+                "📈 Tiến độ khảo sát", 
+                "📋 Thống kê tổng hợp"
+            ]
+            sub_cols = st.columns(4)
             for idx, opt in enumerate(menu_options):
                 is_active = st.session_state["admin_menu"] == opt
                 btn_type = "primary" if is_active else "secondary"
@@ -1336,11 +1551,15 @@ def main():
     st.markdown("""<div style="margin-top: 15px;"></div>""", unsafe_allow_html=True)
     
     if user["role"] == "admin":
-        active_view = st.session_state.get("admin_menu", "📊 Thống kê chung")
-        if active_view == "📊 Thống kê chung":
+        active_view = st.session_state.get("admin_menu", "📊 Đồ thị Dashboard")
+        if active_view == "📊 Đồ thị Dashboard":
             render_admin_dashboard()
-        else:
+        elif active_view == "⚙️ Thiết lập hệ thống":
             admin_he_thong()
+        elif active_view == "📈 Tiến độ khảo sát":
+            admin_tien_do()
+        else:
+            admin_thong_ke_tong_hop()
     else:
         dtv_nhap_phieu()
 
