@@ -202,7 +202,7 @@ def apply_custom_style() -> None:
         
         /* Sticky Header Pinning CSS */
         div[data-testid="stVerticalBlock"] > div:has(#sticky-header),
-        div[data-testid="stVerticalBlockBorder"]:has(#sticky-header) {
+        div[data-testid="stVerticalBlockBorder"]:has(#sticky-header) {{
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
@@ -214,44 +214,44 @@ def apply_custom_style() -> None:
             width: 100% !important;
             margin: 0 !important;
             padding: 10px 0 0 0 !important;
-        }
+        }}
         
         div[data-testid="stVerticalBlock"] > div:has(#sticky-header) > div,
-        div[data-testid="stVerticalBlockBorder"]:has(#sticky-header) > div {
+        div[data-testid="stVerticalBlockBorder"]:has(#sticky-header) > div {{
             max-width: 1200px !important;
             margin: 0 auto !important;
             padding: 0px 1.5rem 10px 1.5rem !important;
-        }
+        }}
 
-        .sticky-header-spacer {
+        .sticky-header-spacer {{
             height: 345px !important;
             width: 100% !important;
-        }
+        }}
         
         /* Modern tabs customization */
-        div[data-testid="stTabs"] button {
+        div[data-testid="stTabs"] button {{
             font-weight: 600 !important;
             font-size: 13.5px !important;
             padding: 8px 16px !important;
             color: #64748b !important;
-        }
-        div[data-testid="stTabs"] button[aria-selected="true"] {
+        }}
+        div[data-testid="stTabs"] button[aria-selected="true"] {{
             color: #0284c7 !important;
             border-bottom-color: #0284c7 !important;
-        }
+        }}
         
-        @media (max-width: 768px) {
-            .main .block-container {
+        @media (max-width: 768px) {{
+            .main .block-container {{
                 padding-top: 1.5rem !important;
-            }
-            div[data-testid="stTabs"] button {
+            }}
+            div[data-testid="stTabs"] button {{
                 font-size: 11.5px !important;
                 padding: 6px 12px !important;
-            }
-            .sticky-header-spacer {
+            }}
+            .sticky-header-spacer {{
                 height: 520px !important;
-            }
-        }
+            }}
+        }}
         </style>
         """,
         unsafe_allow_html=True,
