@@ -145,7 +145,6 @@ SHEETS = {
     "phan_cong": "PhanCong",
     "ket_qua": "KetQua",
 }
-@st.cache_data(ttl=600)
 
 # --- QĐ 1099 / Phần B: 7 nguồn thu nhập ---
 ADMIN_MA = "ADMIN"
