@@ -200,27 +200,58 @@ def apply_custom_style() -> None:
             border: 1px solid #e2e8f0;
         }}
         
+        /* Sticky Header Pinning CSS */
+        div[data-testid="stVerticalBlock"] > div:has(#sticky-header),
+        div[data-testid="stVerticalBlockBorder"]:has(#sticky-header) {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 999991 !important;
+            background-color: #f8fafc !important;
+            border-bottom: 2px solid #e2e8f0 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 10px 0 0 0 !important;
+        }
+        
+        div[data-testid="stVerticalBlock"] > div:has(#sticky-header) > div,
+        div[data-testid="stVerticalBlockBorder"]:has(#sticky-header) > div {
+            max-width: 1200px !important;
+            margin: 0 auto !important;
+            padding: 0px 1.5rem 10px 1.5rem !important;
+        }
+
+        .sticky-header-spacer {
+            height: 345px !important;
+            width: 100% !important;
+        }
+        
         /* Modern tabs customization */
-        div[data-testid="stTabs"] button {{
+        div[data-testid="stTabs"] button {
             font-weight: 600 !important;
             font-size: 13.5px !important;
             padding: 8px 16px !important;
             color: #64748b !important;
-        }}
-        div[data-testid="stTabs"] button[aria-selected="true"] {{
+        }
+        div[data-testid="stTabs"] button[aria-selected="true"] {
             color: #0284c7 !important;
             border-bottom-color: #0284c7 !important;
-        }}
+        }
         
-        @media (max-width: 768px) {{
-            .main .block-container {{
+        @media (max-width: 768px) {
+            .main .block-container {
                 padding-top: 1.5rem !important;
-            }}
-            div[data-testid="stTabs"] button {{
+            }
+            div[data-testid="stTabs"] button {
                 font-size: 11.5px !important;
                 padding: 6px 12px !important;
-            }}
-        }}
+            }
+            .sticky-header-spacer {
+                height: 520px !important;
+            }
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -229,6 +260,8 @@ def apply_custom_style() -> None:
 def hien_thi_banner() -> None:
     """Hiển thị ảnh ngang nằm ở trên cùng của trang (tương thích GitHub image/panel.png)"""
     import os
+    # Thêm khoảng trống lịch sự phía trên để tránh ảnh bị sát mép trên cùng
+    st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
     image_path = "image/panel.png"
     # Dùng ảnh dự phòng của Unsplash nếu file chưa tồn tại local để tránh lỗi hiển thị trống
     fallback_url = "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=2000&h=300"
@@ -1500,55 +1533,58 @@ def main():
         
     user = st.session_state["user"]
     
-    # Hiển thị ảnh ngang nằm ở trên cùng của trang
-    hien_thi_banner()
-    
-    cols = st.columns([2, 4.5, 1.2])
-    
-    with cols[0]:
-        st.markdown(f"""
-        <div class="user-badge-card">
-            <div class="avatar-circle">{user['ten'][:1].upper()}</div>
-            <div>
-                <div class="user-title">{user['ten']}</div>
-                <div class="user-role">{user['role'].upper()}: {user['ma']}</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    # Khối tiêu đề ghim ở đỉnh trang (Sticky / Pin)
+    with st.container():
+        st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
+        # Hiển thị ảnh ngang nằm ở trên cùng của trang
+        hien_thi_banner()
         
-    with cols[1]:
-        if user["role"] == "admin":
-            if "admin_menu" not in st.session_state:
-                st.session_state["admin_menu"] = "📊 Đồ thị Dashboard"
-            
-            menu_options = [
-                "📊 Đồ thị Dashboard", 
-                "⚙️ Thiết lập hệ thống", 
-                "📈 Tiến độ khảo sát", 
-                "📋 Thống kê tổng hợp"
-            ]
-            sub_cols = st.columns(4)
-            for idx, opt in enumerate(menu_options):
-                is_active = st.session_state["admin_menu"] == opt
-                btn_type = "primary" if is_active else "secondary"
-                if sub_cols[idx].button(opt, key=f"admin_nav_{idx}", use_container_width=True, type=btn_type):
-                    st.session_state["admin_menu"] = opt
-                    st.rerun()
-        else:
+        cols = st.columns([2, 4.5, 1.2])
+        
+        with cols[0]:
             st.markdown(f"""
-            <div class="surveyor-badge">
-                <span class="status-dot">●</span> 
-                <span style="font-weight:700;">CHẾ ĐỘ ĐIỀU TRA VIÊN HOẠT ĐỘNG</span>
-                <span style="color:#64748b; margin-left:8px;">| Đang nhập phiếu trực tuyến</span>
+            <div class="user-badge-card">
+                <div class="avatar-circle">{user['ten'][:1].upper()}</div>
+                <div>
+                    <div class="user-title">{user['ten']}</div>
+                    <div class="user-role">{user['role'].upper()}: {user['ma']}</div>
+                </div>
             </div>
             """, unsafe_allow_html=True)
             
-    with cols[2]:
-        if st.button("🚪 Đăng xuất", key="logout_btn", use_container_width=True, type="secondary"):
-            st.session_state.clear()
-            st.rerun()
-            
-    st.markdown("""<div style="margin-top: 15px;"></div>""", unsafe_allow_html=True)
+        with cols[1]:
+            if user["role"] == "admin":
+                if "admin_menu" not in st.session_state:
+                    st.session_state["admin_menu"] = "📊 Đồ thị Dashboard"
+                
+                menu_options = [
+                    "📊 Đồ thị Dashboard", 
+                    "⚙️ Thiết lập hệ thống", 
+                    "📈 Tiến độ khảo sát", 
+                    "📋 Thống kê tổng hợp"
+                ]
+                sub_cols = st.columns(4)
+                for idx, opt in enumerate(menu_options):
+                    is_active = st.session_state["admin_menu"] == opt
+                    btn_type = "primary" if is_active else "secondary"
+                    if sub_cols[idx].button(opt, key=f"admin_nav_{idx}", use_container_width=True, type=btn_type):
+                        st.session_state["admin_menu"] = opt
+                        st.rerun()
+            else:
+                st.markdown(f"""
+                <div class="surveyor-badge">
+                    <span class="status-dot">●</span> 
+                    <span style="font-weight:700;">CHẾ ĐỘ ĐIỀU TRA VIÊN HOẠT ĐỘNG</span>
+                    <span style="color:#64748b; margin-left:8px;">| Đang nhập phiếu trực tuyến</span>
+                </div>
+                """, unsafe_allow_html=True)
+                
+        with cols[2]:
+            if st.button("🚪 Đăng xuất", key="logout_btn", use_container_width=True, type="secondary"):
+                st.session_state.clear()
+                st.rerun()
+                
+    st.markdown('<div class="sticky-header-spacer"></div>', unsafe_allow_html=True)
     
     if user["role"] == "admin":
         active_view = st.session_state.get("admin_menu", "📊 Đồ thị Dashboard")
