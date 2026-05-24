@@ -2278,29 +2278,28 @@ def dtv_nhap_phieu():
 # ---------------------------------------------------------------------------
 def main():
     apply_custom_style()
-    render_header()
-    data = load_all_data_sync() # Tải dữ liệu 1 lần
-
+    # DÒNG 2281 ĐÃ ĐƯỢC XÓA Ở ĐÂY
+    
     if "user" not in st.session_state:
         page_login()
         return
 
     user = st.session_state["user"]
     
-    # MENU NGANG CỦA BẠN
+    # Menu ngang
     selected = option_menu(
         menu_title=None, 
-        options=["Điều hành thống kê", "Hệ thống", "Thông tin hộ", "Tổng hợp", "Tiến độ"],
-        icons=["bar-chart", "gear", "search", "graph-up", "clipboard-data"],
+        options=["Điều hành thống kê", "Hệ thống", "Thông tin hộ", "Tổng hợp", "Tiến độ"], 
         orientation="horizontal"
     )
     
-    if st.button("Đăng xuất"):
+    if st.sidebar.button("Đăng xuất"):
         st.session_state.clear()
         st.rerun()
 
-    # LOGIC GỌI HÀM (Đảm bảo không bị lỗi tham số)
+    # Điều hướng
     if user["role"] == "admin":
+        data = load_all_data_sync()
         if selected == "Điều hành thống kê":
             render_admin_dashboard(data["ho"], data["kq"])
         elif selected == "Hệ thống":
@@ -2310,8 +2309,9 @@ def main():
         elif selected == "Tổng hợp":
             admin_tong_hop()
         elif selected == "Tiến độ":
-            admin_tien_do() # Gọi hàm tiến độ bạn vừa chèn
+            admin_tien_do()
     else:
         dtv_nhap_phieu()
+
 if __name__ == "__main__":
     main()
