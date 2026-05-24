@@ -656,6 +656,9 @@ def hien_loi_validation(noi_dung: str) -> None:
 def _key_hoat_dong(nhom_id: str, ho_so: str, form_ver: int) -> str:
     return f"hd_{nhom_id}_{ho_so}_{form_ver}"
 
+def _key_chi_tiet_linh_vuc(ma_lv: str, ho_so: str, form_ver: int) -> str:
+    return f"sp_ct_{ma_lv}_{ho_so}_{form_ver}"
+
 def hien_canh_bao_khong_tinh() -> None:
     st.caption(f"⚠️ Lưu ý QĐ 1099: {CANH_BAO_KHONG_TINH}")
 
