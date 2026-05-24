@@ -100,54 +100,42 @@ def render_header(title=""):
     # Đóng thẻ div sticky-header (Dòng này cực kỳ quan trọng)
     st.markdown('</div>', unsafe_allow_html=True)
 def apply_custom_style() -> None:
-    """Giao diện Navy chủ đạo — bo góc, đổ bóng, tối giản, cố định header."""
+    """Giao diện Navy chủ đạo — ép sát lên trên cùng."""
     st.markdown(
         f"""
         <style>
-        /* 1. Ẩn thanh header và toolbar mặc định của Streamlit */
+        /* 1. Ẩn thanh header và toolbar mặc định */
         [data-testid="stHeader"], [data-testid="stToolbar"] {{ display: none !important; }}
 
-        /* 2. Ép Banner dính sát đỉnh màn hình */
-        .sticky-header {{
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            z-index: 99999 !important;
-            background: #f4f7fb !important;
+        /* 2. Ép container chính sát đỉnh màn hình */
+        .block-container {{ 
+            padding-top: 0rem !important; 
+            padding-bottom: 0rem !important;
+            max-width: 95% !important; /* Dùng 95% để nội dung thoáng hơn */
         }}
 
-        /* 3. Loại bỏ khoảng trống thừa (1.5 phân) của Streamlit */
-        .stAppViewContainer {{ padding-top: 0px !important; }}
-        .block-container {{ padding-top: 0px !important; }}
+        /* 3. XÓA BỎ MỌI KHOẢNG CÁCH THỪA CỦA STREAMLIT */
+        [data-testid="stAppViewContainer"] {{ padding-top: 0rem !important; }}
+        .stMain {{ padding-top: 0rem !important; }}
+        
+        /* Đảm bảo không có khoảng cách dư thừa từ các block bên trong */
+        div.stApp {{ padding-top: 0px !important; }}
 
-        /* 4. Đẩy nội dung chính xuống dưới Banner (điều chỉnh 100px-120px tùy độ cao banner) */
-        .stMain {{ padding-top: 100px !important; }}
-
-        /* Các style cũ của bạn giữ nguyên bên dưới */
+        /* Các style khác giữ nguyên */
         hr {{ margin: 5px 0 !important; border: 0 !important; border-top: 1px solid #e0e0e0 !important; }}
         :root {{ --navy: {NAVY_PRIMARY}; --navy-accent: {NAVY_ACCENT}; --navy-light: {NAVY_LIGHT}; }}
-        .stApp {{ background: linear-gradient(165deg, #f4f7fb 0%, #ffffff 55%); }}
-        [data-testid="stSidebar"] {{ background-color: {NAVY_LIGHT}; border-right: 1px solid #c5d0de; }}
-        .dash-header {{ background: linear-gradient(135deg, {NAVY_PRIMARY}, {NAVY_ACCENT}); color: #fff; padding: 1.1rem 1.5rem; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
-        .dash-header h1 {{ margin: 0; font-size: 1.2rem; letter-spacing: 0.04em; font-weight: 700; }}
-        div[data-testid="stMetric"] {{ background: #fff; padding: 0.65rem 0.85rem; border-radius: 10px; box-shadow: 0 2px 8px rgba(13, 33, 55, 0.06); border: 1px solid #e8edf3; }}
+        
+        .card-box {{ 
+            background: #fff; 
+            padding: 1.25rem; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid #e8edf3;
+        }}
         </style>
         """,
         unsafe_allow_html=True,
     )
-
-@contextmanager
-def card_container(title: str | None = None):
-    """Khối nội dung bo góc 10px + đổ bóng."""
-    tieu_de = f"<p style='margin:0 0 0.75rem;font-weight:600;color:{NAVY_PRIMARY};'>{title}</p>" if title else ""
-    st.markdown(f'<div class="card-box">{tieu_de}', unsafe_allow_html=True)
-    try:
-        yield
-    finally:
-        st.markdown("</div>", unsafe_allow_html=True)
-
-
 apply_custom_style()
 
 SHEETS = {
@@ -157,6 +145,7 @@ SHEETS = {
     "phan_cong": "PhanCong",
     "ket_qua": "KetQua",
 }
+@st.cache_data(ttl=600)
 
 # --- QĐ 1099 / Phần B: 7 nguồn thu nhập ---
 ADMIN_MA = "ADMIN"
