@@ -274,8 +274,8 @@ def hien_thi_banner() -> None:
     st.markdown(
         """
         <div style="text-align: center; margin-top: -10px; margin-bottom: 25px;">
-            <h2 style="color:#0d2137; font-weight:800; margin-bottom: 5px; font-size: 24px; text-transform: uppercase;">HỆ THỐNG ĐIỀU TRA THU NHẬP HỘ PMDTV</h2>
-            <p style="color:#64748b; font-size: 13px; font-weight: 500; margin: 0;">Chương trình Khảo sát Thu nhập hộ nông thôn & Đánh giá phân tích Kinh tế Nông nghiệp | QĐ 1099 | Tổng cục Thống kê</p>
+            <h2 style="color:#0d2137; font-weight:800; margin-bottom: 5px; font-size: 24px; text-transform: uppercase;">HỆ THỐNG QUẢN LÝ ĐIỀU TRA THU NHẬP HỘ</h2>
+            <p style="color:#64748b; font-size: 13px; font-weight: 500; margin: 0;">Chương trình Khảo sát Thu nhập hộ gia đình </p>
         </div>
         """,
         unsafe_allow_html=True
@@ -871,7 +871,7 @@ def nhap_lieu_5_nhom(ho_so: str, form_ver: int) -> None:
                 st.write("Nhập thông tin nhân khẩu sinh sống trong hộ:")
                 nhap_thanh_vien_ho(ho_so, form_ver)
             else:
-                cau_hoi = "Trong 12 tháng qua, hộ kinh doanh có ai nhận tiền lương không?" if nhom["id"] == "luong" else f"Hộ có hoạt động sinh thu nhập {nhom['ten']} không?"
+                cau_hoi = "Trong 12 tháng qua, hộ Ông bà có ai nhận được tiền lương tiền công không?" if nhom["id"] == "luong" else f"Hộ có hoạt động sinh thu nhập {nhom['ten']} không?"
                 co_hd = st.radio(cau_hoi, ["Có", "Không"], horizontal=True, key=_key_hoat_dong(nhom["id"], ho_so, form_ver)) == "Có"
                 
                 if not co_hd:
