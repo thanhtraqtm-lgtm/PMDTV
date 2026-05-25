@@ -224,8 +224,23 @@ def apply_custom_style() -> None:
         }}
 
         .sticky-header-spacer {{
-            height: 345px !important;
+            height: 290px !important;
             width: 100% !important;
+        }}
+        
+        .app-main-title {{
+            color: #0d2137;
+            font-weight: 800;
+            margin-bottom: 0px;
+            font-size: 22px;
+            text-transform: uppercase;
+            letter-spacing: -0.3px;
+        }}
+
+        .main-title-wrapper {{
+            text-align: center;
+            margin-top: -12px;
+            margin-bottom: 15px;
         }}
         
         /* Modern tabs customization */
@@ -240,6 +255,21 @@ def apply_custom_style() -> None:
             border-bottom-color: #0284c7 !important;
         }}
         
+        @media (max-width: 1200px) {{
+            .sticky-header-spacer {{
+                height: 265px !important;
+            }}
+        }}
+
+        @media (max-width: 992px) {{
+            .sticky-header-spacer {{
+                height: 240px !important;
+            }}
+            .app-main-title {{
+                font-size: 18px !important;
+            }}
+        }}
+        
         @media (max-width: 768px) {{
             .main .block-container {{
                 padding-top: 1.5rem !important;
@@ -249,7 +279,93 @@ def apply_custom_style() -> None:
                 padding: 6px 12px !important;
             }}
             .sticky-header-spacer {{
-                height: 520px !important;
+                height: 185px !important;
+            }}
+            .app-main-title {{
+                font-size: 15px !important;
+                letter-spacing: -0.5px !important;
+                white-space: nowrap !important;
+            }}
+            .main-title-wrapper {{
+                margin-top: -8px;
+                margin-bottom: 8px;
+            }}
+            
+            /* Thắt chặt khoảng cách và buộc các cột trong phần badge ở đầu trang không bị rớt dòng */
+            div:has(#sticky-header) div[data-testid="stHorizontalBlock"] {{
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                gap: 6px !important;
+                align-items: center !important;
+            }}
+            /* Cho phép cột chứa Badge co giãn và cột chứa Đăng xuất ôm khít */
+            div:has(#sticky-header) div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {{
+                min-width: 0 !important;
+                width: auto !important;
+                flex: 1 1 auto !important;
+            }}
+            /* Riêng cột chứa nút Đăng xuất thì cho kích thước nhỏ gọn */
+            div:has(#sticky-header) div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:last-child {{
+                flex: 0 0 100px !important;
+                width: 100px !important;
+            }}
+            
+            /* Tiết kiệm diện tích màn hình điện thoại cho Badge */
+            .surveyor-badge-sub {{
+                display: none !important;
+            }}
+            .surveyor-badge {{
+                padding: 6px 10px !important;
+                font-size: 10px !important;
+                border-radius: 8px !important;
+            }}
+            .user-badge-card {{
+                padding: 6px 10px !important;
+                border-radius: 8px !important;
+                gap: 6px !important;
+            }}
+            .user-title {{
+                font-size: 11px !important;
+            }}
+            .user-role {{
+                font-size: 8.5px !important;
+                margin-top: 0px !important;
+            }}
+            .avatar-circle {{
+                width: 28px !important;
+                height: 28px !important;
+                font-size: 12px !important;
+            }}
+            
+            /* CSS thu nhỏ nút Đăng xuất Streamlit */
+            div:has(#sticky-header) div[data-testid="stColumn"]:last-child div[data-testid="stButton"] button,
+            div[data-testid="stButton"]:has(button[key="logout_btn"]) button {{
+                padding: 4px 6px !important;
+                min-height: unset !important;
+                height: 36px !important;
+            }}
+            div:has(#sticky-header) div[data-testid="stColumn"]:last-child div[data-testid="stButton"] button p,
+            div:has(#sticky-header) div[data-testid="stColumn"]:last-child div[data-testid="stButton"] button span,
+            div[data-testid="stButton"]:has(button[key="logout_btn"]) button p,
+            div[data-testid="stButton"]:has(button[key="logout_btn"]) button span {{
+                font-size: 11px !important;
+                font-weight: 700 !important;
+            }}
+        }}
+
+        @media (max-width: 480px) {{
+            .sticky-header-spacer {{
+                height: 165px !important;
+            }}
+            .app-main-title {{
+                font-size: 12.5px !important;
+            }}
+            div:has(#sticky-header) div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:last-child {{
+                flex: 0 0 90px !important;
+                width: 90px !important;
+            }}
+            div:has(#sticky-header) div[data-testid="stColumn"]:last-child div[data-testid="stButton"] button {{
+                height: 32px !important;
             }}
         }}
         </style>
@@ -273,9 +389,8 @@ def hien_thi_banner() -> None:
         
     st.markdown(
         """
-        <div style="text-align: center; margin-top: -10px; margin-bottom: 25px;">
-            <h2 style="color:#0d2137; font-weight:800; margin-bottom: 5px; font-size: 24px; text-transform: uppercase;">HỆ THỐNG ĐIỀU TRA THU NHẬP HỘ PMDTV</h2>
-            <p style="color:#64748b; font-size: 13px; font-weight: 500; margin: 0;">Chương trình Khảo sát Thu nhập hộ nông thôn & Đánh giá phân tích Kinh tế Nông nghiệp | QĐ 1099 | Tổng cục Thống kê</p>
+        <div class="main-title-wrapper">
+            <h2 class="app-main-title">HỆ THỐNG ĐIỀU TRA THU NHẬP HỘ</h2>
         </div>
         """,
         unsafe_allow_html=True
@@ -1749,7 +1864,7 @@ def main():
                 <div class="surveyor-badge">
                     <span class="status-dot">●</span> 
                     <span style="font-weight:700;">CHẾ ĐỘ ĐIỀU TRA VIÊN HOẠT ĐỘNG</span>
-                    <span style="color:#64748b; margin-left:8px;">| Đang nhập phiếu trực tuyến</span>
+                    <span class="surveyor-badge-sub">| Đang nhập phiếu trực tuyến</span>
                 </div>
                 """, unsafe_allow_html=True)
                 
