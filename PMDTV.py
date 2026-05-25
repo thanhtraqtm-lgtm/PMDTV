@@ -274,8 +274,8 @@ def hien_thi_banner() -> None:
     st.markdown(
         """
         <div style="text-align: center; margin-top: -10px; margin-bottom: 25px;">
-            <h2 style="color:#0d2137; font-weight:800; margin-bottom: 5px; font-size: 24px; text-transform: uppercase;">HỆ THỐNG QUẢN LÝ ĐIỀU TRA THU NHẬP HỘ</h2>
-            <p style="color:#64748b; font-size: 13px; font-weight: 500; margin: 0;">Chương trình Khảo sát Thu nhập hộ gia đình </p>
+            <h2 style="color:#0d2137; font-weight:800; margin-bottom: 5px; font-size: 24px; text-transform: uppercase;">HỆ THỐNG ĐIỀU TRA THU NHẬP HỘ PMDTV</h2>
+            <p style="color:#64748b; font-size: 13px; font-weight: 500; margin: 0;">Chương trình Khảo sát Thu nhập hộ nông thôn & Đánh giá phân tích Kinh tế Nông nghiệp | QĐ 1099 | Tổng cục Thống kê</p>
         </div>
         """,
         unsafe_allow_html=True
@@ -806,80 +806,202 @@ def nhap_thanh_vien_ho(ho_so: str, form_ver: int) -> None:
     if key not in st.session_state:
         st.session_state[key] = []
     
-    ten = st.text_input("Họ tên thành viên", key=f"tv_ten_{ho_so}_{form_ver}")
-    qh = st.selectbox("Quan hệ với chủ hộ", ["Chủ hộ", "Vợ/chồng", "Con", "Cha/mẹ", "Khác"], key=f"tv_qh_{ho_so}_{form_ver}")
-    
-    if st.button("Thêm thành viên", key=f"tv_them_{ho_so}_{form_ver}", use_container_width=True):
+    st.markdown("<p style='font-weight: 600; color: #1e293b; margin-top: 10px; margin-bottom: -5px;'>➕ Thêm mới nhân khẩu thường trú:</p>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([2.5, 1.5, 1])
+    with c1:
+        ten = st.text_input("Họ tên thành viên", key=f"tv_ten_{ho_so}_{form_ver}", placeholder="Ví dụ: Nguyễn Văn A", label_visibility="collapsed")
+    with c2:
+        qh = st.selectbox("Quan hệ chủ hộ", ["Chủ hộ", "Vợ/chồng", "Con", "Cha/mẹ", "Khác"], key=f"tv_qh_{ho_so}_{form_ver}", label_visibility="collapsed")
+    with c3:
+        them_tv = st.button("➕ Thêm", key=f"tv_them_{ho_so}_{form_ver}", use_container_width=True, type="primary")
+        
+    if them_tv:
         if ten.strip():
             ds = list(st.session_state.get(key, []))
-            ds.append({"Họ tên": ten.strip(), "Quan hệ": qh})
-            st.session_state[key] = ds
-            st.toast(f"Đã thêm thành viên «{ten.strip()}».", icon="✅")
-            
+            # Kiểm tra quan hệ chủ hộ trùng lặp
+            if qh == "Chủ hộ" and any(item.get("Quan hệ") == "Chủ hộ" for item in ds):
+                st.error("⚠️ Hộ gia đình chỉ được phép thiết lập duy nhất một vị trí Chủ hộ.")
+            else:
+                ds.append({"Họ tên": ten.strip().title(), "Quan hệ": qh})
+                st.session_state[key] = ds
+                st.toast(f"Đã thêm thành viên «{ten.strip().title()}».", icon="✅")
+                st.rerun()
+                
     ds_hien = st.session_state.get(key, [])
     if ds_hien:
-        with st.expander(f"Danh sách {len(ds_hien)} thành viên trong hộ", expanded=False):
-            hien_dataframe_an_toan(pd.DataFrame(ds_hien))
+        st.markdown("<p style='font-weight: 700; color: #0f172a; margin-top: 15px; margin-bottom: 5px;'>👥 Danh sách nhân khẩu thực tế ăn ở tại hộ (QĐ 1099):</p>", unsafe_allow_html=True)
+        # Tạo bảng hiển thị thành viên tinh tế có nút xóa tương tác
+        cols_h = st.columns([3, 2, 1])
+        cols_h[0].markdown("<b style='color:#475569;'>Họ và tên thành viên</b>", unsafe_allow_html=True)
+        cols_h[1].markdown("<b style='color:#475569;'>Quan hệ với chủ hộ</b>", unsafe_allow_html=True)
+        cols_h[2].markdown("<p style='text-align: center; margin: 0; font-weight: bold; color:#475569;'>Hành động</p>", unsafe_allow_html=True)
+        st.markdown("<div style='border-bottom: 2px solid #cbd5e1; margin: 4px 0 10px 0;'></div>", unsafe_allow_html=True)
+        
+        for tv_idx, tv_item in enumerate(ds_hien):
+            cols_r = st.columns([3, 2, 1])
+            cols_r[0].write(f"👤 **{tv_item['Họ tên']}**")
+            cols_r[1].write(f"🔹 {tv_item['Quan hệ']}")
+            if cols_r[2].button("🗑️ Xóa", key=f"del_tv_{tv_idx}_{ho_so}_{form_ver}", use_container_width=True, help=f"Gỡ bỏ thành viên {tv_item['Họ tên']}"):
+                new_ds = [item for i, item in enumerate(ds_hien) if i != tv_idx]
+                st.session_state[key] = new_ds
+                st.toast(f"Đã gỡ bỏ thành viên «{tv_item['Họ tên']}»", icon="🗑️")
+                st.rerun()
 
 def nhap_muc_don_doc(ma: str, ten: str, ho_so: str, form_ver: int) -> None:
-    st.markdown(f"**{ten}**")
+    st.markdown(f"<p style='font-weight: 700; color: #1e3a8a; font-size: 15px; margin-top: 15px;'>📋 {ten}</p>", unsafe_allow_html=True)
     k_dt, k_cp = f"dt_{ma}_{ho_so}_{form_ver}", f"cp_{ma}_{ho_so}_{form_ver}"
     
-    dt = st.number_input("Doanh thu (nghìn đồng/tháng)", min_value=0.0, value=float(so_hoa(st.session_state.get(k_dt, 0))), step=50.0, key=k_dt)
-    cp = st.number_input("Chi phí (nghìn đồng/tháng)", min_value=0.0, value=float(so_hoa(st.session_state.get(k_cp, 0))), step=50.0, key=k_cp)
+    # Theo quy định QĐ 1099, tiền lương công và thu nhập khác chỉ hạch toán doanh thu và chi phí mặc định bằng 0
+    co_chi_phi = (ma not in ["ThuLuong", "ThuKhac"])
     
-    if loi_chi_phi_vuot_thu(cp, dt):
-        hien_loi_validation(f"⚠️ Cảnh báo: Chi phí ({cp:,.0f}) vượt quá doanh thu ({dt:,.0f}).")
-    st.caption(f"Thu nhập thuần lũy kế: **{thu_thuan(dt, cp):,.0f} nghìnđ/tháng**")
+    if co_chi_phi:
+        c1, c2 = st.columns(2)
+        with c1:
+            dt = st.number_input("Doanh thu sản xuất kinh doanh (nghìn đồng/tháng)", min_value=0.0, value=float(so_hoa(st.session_state.get(k_dt, 0))), step=50.0, key=k_dt)
+        with c2:
+            cp = st.number_input("Chi phí vận hành và quản lý (nghìn đồng/tháng)", min_value=0.0, value=float(so_hoa(st.session_state.get(k_cp, 0))), step=50.0, key=k_cp)
+            
+        if loi_chi_phi_vuot_thu(cp, dt):
+            hien_loi_validation(f"⚠️ Cảnh báo QĐ 1099: Chi phí sản xuất ({cp:,.0f}) vượt doanh thu ({dt:,.0f}). Vui lòng xác thực lại.")
+        st.markdown(f"<div style='text-align: right; color: #0284c7; font-weight: 700; font-size:14px; margin-top: 5px;'>Thu nhập thuần tích lũy: {thu_thuan(dt, cp):,.0f} nghìn đồng/tháng</div>", unsafe_allow_html=True)
+    else:
+        dt = st.number_input("Khoản thu nhập nhận được thực tế (nghìn đồng/tháng)", min_value=0.0, value=float(so_hoa(st.session_state.get(k_dt, 0))), step=50.0, key=k_dt)
+        st.session_state[k_cp] = 0.0 # Chi phí tiền lương bằng 0
+        st.markdown(f"<div style='text-align: right; color: #0284c7; font-weight: 700; font-size:14px; margin-top: 5px;'>Thu nhập thuần tích lũy: {dt:,.0f} nghìn đồng/tháng</div>", unsafe_allow_html=True)
 
 def nhap_linh_vuc_co_san_pham(ma_lv: str, ten_lv: str, ho_so: str, form_ver: int) -> None:
-    st.markdown(f"**{ten_lv}**")
-    sp = st.selectbox("Chọn sản phẩm", SAN_PHAM_LINH_VUC.get(ma_lv, ["Khác"]), key=f"sp_sel_{ma_lv}_{ho_so}_{form_ver}")
+    st.markdown(f"<p style='font-weight: 700; color: #0369a1; font-size: 15px; margin-top: 15px;'>🌾 {ten_lv} (Danh sách cây trồng, vật nuôi khảo sát)</p>", unsafe_allow_html=True)
     
-    # Render các trường nhập con
-    for o in O_NHAP_SAN_PHAM:
-        st.number_input(f"{o} (nghìn đồng/tháng)", min_value=0.0, value=0.0, step=10.0, key=f"{ma_lv}_{o}_{sp}_{ho_so}_{form_ver}")
+    # Grid nhập liệu tinh gọn ngang như biểu mẫu Excel QĐ 1099 thực tế
+    with st.container():
+        st.markdown("<div style='background-color: #f8fafc; padding: 15px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px;'>", unsafe_allow_html=True)
+        st.markdown("<span style='font-size:12px; font-weight:700; color:#475569;'>✍️ NHẬP DÒNG SẢN PHẨM MỚI</span>", unsafe_allow_html=True)
         
-    if st.button("Thêm dòng sản phẩm này", key=f"them_sp_{ma_lv}_{ho_so}_{form_ver}", use_container_width=True):
-        key = _key_chi_tiet_linh_vuc(ma_lv, ho_so, form_ver)
-        ds = list(st.session_state.get(key, []))
+        c_grid = st.columns([2, 2, 2, 2])
+        with c_grid[0]:
+            sp = st.selectbox("Chọn loại sản phẩm", SAN_PHAM_LINH_VUC.get(ma_lv, ["Khác"]), key=f"sp_sel_{ma_lv}_{ho_so}_{form_ver}")
+        with c_grid[1]:
+            # Nhóm 1: Doanh thu
+            st.markdown("<span style='font-size:11.5px; font-weight:600; color:#0369a1;'>💰 Doanh số / Thu sản phẩm</span>", unsafe_allow_html=True)
+            val_gb = st.number_input("1. Giá trị bán ra (nghìnđ)", min_value=0.0, value=0.0, step=10.0, key=f"{ma_lv}_Giá bán_{sp}_{ho_so}_{form_ver}")
+            val_td = st.number_input("2. Giá trị tự dùng (nghìnđ)", min_value=0.0, value=0.0, step=10.0, key=f"{ma_lv}_Tự dùng_{sp}_{ho_so}_{form_ver}")
+        with c_grid[2]:
+            # Nhóm 2: Chi phí chính
+            st.markdown("<span style='font-size:11.5px; font-weight:600; color:#b45309;'>💸 Chi phí trực tiếp</span>", unsafe_allow_html=True)
+            val_g = st.number_input("3. Chi giống (nghìnđ)", min_value=0.0, value=0.0, step=10.0, key=f"{ma_lv}_Giống_{sp}_{ho_so}_{form_ver}")
+            val_ta = st.number_input("4. Chi thức ăn/Phân (nghìnđ)", min_value=0.0, value=0.0, step=10.0, key=f"{ma_lv}_Thức ăn_{sp}_{ho_so}_{form_ver}")
+        with c_grid[3]:
+            # Nhóm 3: Chi phí phụ & Hoàn tất
+            st.markdown("<span style='font-size:11.5px; font-weight:600; color:#64748b;'>🛠️ Phí vận hành</span>", unsafe_allow_html=True)
+            val_ck = st.number_input("5. Chi khác (nghìnđ)", min_value=0.0, value=0.0, step=10.0, key=f"{ma_lv}_Chi khác_{sp}_{ho_so}_{form_ver}")
+            
+            st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+            them_sp = st.button("➕ Thêm dòng", key=f"them_sp_{ma_lv}_{ho_so}_{form_ver}", use_container_width=True, type="primary")
+            
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+    key = _key_chi_tiet_linh_vuc(ma_lv, ho_so, form_ver)
+    ds = list(st.session_state.get(key, []))
+    
+    if them_sp:
+        # Kiểm tra trùng sản phẩm để tránh hỗn loạn số liệu
+        exists_idx = next((i for i, d in enumerate(ds) if d.get("Sản phẩm") == sp), None)
         dong = {"Sản phẩm": sp}
         for o in O_NHAP_SAN_PHAM:
             dong[o] = so_hoa(st.session_state.get(f"{ma_lv}_{o}_{sp}_{ho_so}_{form_ver}", 0))
             
         dt_d, cp_d, th_d = tong_hop_chi_tiet_linh_vuc([dong])
         if loi_chi_phi_vuot_thu(cp_d, dt_d):
-            st.toast("Chi phí sản phẩm vượt quá doanh thu.", icon="⚠️")
+            st.error(f"⚠️ Không thể lưu: Chi phí sản phẩm ({cp_d:,.0f}) lớn hơn doanh thu ({dt_d:,.0f}).")
         else:
             dong.update({"Doanh thu": dt_d, "Chi phí": cp_d, "Thu nhập thuần": th_d})
-            ds.append(dong)
+            if exists_idx is not None:
+                ds[exists_idx] = dong # Ghi đè cập nhật số liệu
+                st.toast(f"Đã cập nhật lại số liệu sản phẩm «{sp}».", icon="📝")
+            else:
+                ds.append(dong) # Thêm mới
+                st.toast(f"Đã thêm sản phẩm «{sp}» vào danh sách thành công.", icon="✅")
+                
             st.session_state[key] = ds
-            st.toast(f"Đã thêm {sp} thành công.", icon="✅")
+            st.rerun()
             
     ds_hien = lay_chi_tiet_linh_vuc(ma_lv, ho_so, form_ver)
     if ds_hien:
-        with st.expander(f"Kết quả sản phẩm {ten_lv} ({len(ds_hien)} mục)", expanded=False):
-            hien_dataframe_an_toan(pd.DataFrame(ds_hien))
+        st.markdown(f"<p style='color:#0d9488; font-weight:700; margin-bottom:5px;'>📊 Bảng chiết tính thu nhập từ hoạt động {ten_lv}:</p>", unsafe_allow_html=True)
+        
+        # Tiêu đề bảng của Quy định 1099
+        cols_h = st.columns([2.5, 1.5, 1.5, 2, 1.1])
+        with cols_h[0]:
+            st.markdown("<b style='color:#334155;'>Tên nông sản / vật nuôi</b>", unsafe_allow_html=True)
+        with cols_h[1]:
+            st.markdown("<p style='text-align: right; font-weight: bold; color:#0d9488; margin: 0;'>Doanh thu (1)</p>", unsafe_allow_html=True)
+        with cols_h[2]:
+            st.markdown("<p style='text-align: right; font-weight: bold; color:#b45309; margin: 0;'>Chi phí (2)</p>", unsafe_allow_html=True)
+        with cols_h[3]:
+            st.markdown("<p style='text-align: right; font-weight: bold; color:#0284c7; margin: 0;'>Thuần (3 = 1 - 2)</p>", unsafe_allow_html=True)
+        with cols_h[4]:
+            st.markdown("<p style='text-align: center; font-weight: bold; color:#475569; margin: 0;'>Xóa dòng</p>", unsafe_allow_html=True)
+            
+        st.markdown("<div style='border-bottom: 2px solid #cbd5e1; margin: 4px 0 10px 0;'></div>", unsafe_allow_html=True)
+        
+        for d_idx, d_item in enumerate(ds_hien):
+            cols_r = st.columns([2.5, 1.5, 1.5, 2, 1.1])
+            with cols_r[0]:
+                st.write(f"🌱 **{d_item['Sản phẩm']}**")
+            with cols_r[1]:
+                st.markdown(f"<p style='text-align: right; margin: 0;'>{d_item.get('Doanh thu', 0):,.0f}</p>", unsafe_allow_html=True)
+            with cols_r[2]:
+                st.markdown(f"<p style='text-align: right; margin: 0;'>{d_item.get('Chi phí', 0):,.0f}</p>", unsafe_allow_html=True)
+            with cols_r[3]:
+                st.markdown(f"<p style='text-align: right; font-weight:700; color:#0284c7; margin: 0;'>{d_item.get('Thu nhập thuần', 0):,.0f}</p>", unsafe_allow_html=True)
+            with cols_r[4]:
+                if st.button("❌ Gỡ", key=f"del_sp_{ma_lv}_{d_idx}_{ho_so}_{form_ver}", use_container_width=True, help=f"Gỡ bỏ {d_item['Sản phẩm']}"):
+                    new_ds = [item for i, item in enumerate(ds_hien) if i != d_idx]
+                    st.session_state[key] = new_ds
+                    st.toast(f"Đã gỡ bỏ nông sản «{d_item['Sản phẩm']}»", icon="🗑️")
+                    st.rerun()
+                    
+            # Hiển thị chi tiết cơ cấu chiết tính theo sát quy trình 1099
+            ct_ban = d_item.get("Giá bán", 0)
+            ct_dung = d_item.get("Tự dùng", 0)
+            ct_giong = d_item.get("Giống", 0)
+            ct_an = d_item.get("Thức ăn", 0)
+            ct_khac = d_item.get("Chi khác", 0)
+            st.markdown(
+                f"<div style='font-size: 11px; color:#64748b; margin-top:-8px; padding-left:10px; margin-bottom:10px;'>"
+                f"↳ [Doanh số bán: {ct_ban:,.0f} | Tự tiêu thụ: {ct_dung:,.0f}] ⸎ [Giống/Cây giống: {ct_giong:,.0f} | Thức ăn/Phân: {ct_an:,.0f} | Chi phụ: {ct_khac:,.0f}]"
+                f"</div>",
+                unsafe_allow_html=True
+            )
 
 def nhap_lieu_5_nhom(ho_so: str, form_ver: int) -> None:
-    """Quy trình nhập 5 nhóm chỉ số tài chính độc lập."""
-    st.caption("Đơn vị hiện thị: **nghìn đồng/tháng**.")
+    """Quy trình trình bày bộ câu hỏi điều tra 5 nhóm tài chính chuẩn chỉ QĐ 1099."""
+    st.caption("⚠️ Đơn vị tiền tệ hạch toán chính xác: **nghìn đồng/tháng**.")
     
     for nhom in NHOM_NHAP:
         with card_container(nhom["ten"]):
             if nhom["id"] == "thanh_vien":
-                st.write("Nhập thông tin nhân khẩu sinh sống trong hộ:")
+                st.markdown("<b style='color:#0f172a; font-size:14px;'>👥 THÔNG TIN NHÂN KHẨU THƯỜNG TRÚ</b>", unsafe_allow_html=True)
+                st.info("💡 Hãy cập nhật chính xác danh sách các thành viên thực tế ăn ở và sinh hoạt chung tại hộ từ 6 tháng trở lên.")
                 nhap_thanh_vien_ho(ho_so, form_ver)
             else:
-                cau_hoi = "Trong 12 tháng qua, hộ Ông bà có ai nhận được tiền lương tiền công không?" if nhom["id"] == "luong" else f"Hộ có hoạt động sinh thu nhập {nhom['ten']} không?"
-                co_hd = st.radio(cau_hoi, ["Có", "Không"], horizontal=True, key=_key_hoat_dong(nhom["id"], ho_so, form_ver)) == "Có"
+                # Đặt các câu hỏi khảo sát chuẩn hóa hành chính QĐ 1099 của Tổng cục Thống Kê
+                if nhom["id"] == "luong":
+                    cau_hoi = "💬 1. Trong 12 tháng qua, có thành viên nào trong hộ nhận được tiền lương, tiền công, phụ cấp hoặc tiền thưởng từ công việc làm thuê không?"
+                elif nhom["id"] == "sxkd":
+                    cau_hoi = "💬 2. Trong 12 tháng qua, hộ gia đình có phát sinh doanh thu từ các hoạt động sản xuất kinh doanh phi nông nghiệp hoặc dịch vụ tự doanh không?"
+                elif nhom["id"] == "nlt":
+                    cau_hoi = "💬 3. Trong 12 tháng qua, hộ gia đình có tiến hành các hoạt động trồng trọt, chăn nuôi, lâm nghiệp hoặc nuôi trồng thủy sản không?"
+                else: # khac
+                    cau_hoi = "💬 4. Trong 12 tháng qua, hộ gia đình có nhận khoản thu nhập nào khác như lãi tiết kiệm, kiều hối, trợ cấp, hưu trí, quà biếu tặng... không?"
+                    
+                co_hd = st.radio(cau_hoi, ["Có phát sinh", "Không phát sinh"], horizontal=True, key=_key_hoat_dong(nhom["id"], ho_so, form_ver)) == "Có phát sinh"
                 
                 if not co_hd:
-                    st.caption("Ghi nhận loại hình thu nhập này bằng **0**.")
+                    st.caption("✅ Ghi nhận không có thu nhập ở nguồn này (Báo cáo: 0 đồng/tháng).")
                     continue
                 
                 if nhom["loai"] == "don":
-                    # Khắc phục lỗi Undefined Variable bằng cách sử dụng bộ map_chi_tieu đã định nghĩa ở trên nâng cấp tính toán an toàn
                     muc = map_chi_tieu.get(nhom["ma"])
                     if muc:
                         nhap_muc_don_doc(muc["ma"], muc["ten"], ho_so, form_ver)
@@ -888,7 +1010,7 @@ def nhap_lieu_5_nhom(ho_so: str, form_ver: int) -> None:
                     for i, muc in enumerate(muc_nlt):
                         nhap_linh_vuc_co_san_pham(muc["ma"], muc["ten"], ho_so, form_ver)
                         if i < len(muc_nlt) - 1:
-                            st.divider()
+                            st.markdown("<div style='margin: 15px 0; border-top: 1px dashed #e2e8f0;'></div>", unsafe_allow_html=True)
 
 def tong_hop_du_lieu_phieu(ho_so: str, form_ver: int) -> dict[str, Any]:
     """Tổng hợp toàn bộ chỉ số nháp ĐTV nhập của 1 Hộ trước ghi lưu."""
@@ -901,7 +1023,8 @@ def tong_hop_du_lieu_phieu(ho_so: str, form_ver: int) -> dict[str, Any]:
         ma, loai = muc["ma"], muc["loai"]
         nhom_id = "nlt" if loai == "linh_vuc_sp" else ("luong" if loai == "luong" else ("sxkd" if loai == "sxkd" else "khac"))
         
-        if st.session_state.get(_key_hoat_dong(nhom_id, ho_so, form_ver)) != "Có":
+        status = st.session_state.get(_key_hoat_dong(nhom_id, ho_so, form_ver))
+        if status not in ["Có", "Có phát sinh"]:
             continue
             
         if loai in ("luong", "sxkd", "khac"):
@@ -946,7 +1069,8 @@ def kiem_tra_validation_phieu(ho_so: str, form_ver: int) -> tuple[bool, list[str
     for muc in CHI_TIEU_PHAN_B:
         ma, loai = muc["ma"], muc["loai"]
         nhom_id = "nlt" if loai == "linh_vuc_sp" else ("luong" if loai == "luong" else ("sxkd" if loai == "sxkd" else "khac"))
-        if st.session_state.get(_key_hoat_dong(nhom_id, ho_so, form_ver)) != "Có":
+        status_chk = st.session_state.get(_key_hoat_dong(nhom_id, ho_so, form_ver))
+        if status_chk not in ["Có", "Có phát sinh"]:
             continue
         if loai in ("luong", "sxkd", "khac"):
             dt, cp = so_hoa(st.session_state.get(f"dt_{ma}_{ho_so}_{form_ver}", 0)), so_hoa(st.session_state.get(f"cp_{ma}_{ho_so}_{form_ver}", 0))
@@ -1163,18 +1287,57 @@ def dtv_nhap_phieu():
     ho = pending.iloc[idx]
     ho_so = str(ho['HoSo'])
     
+    # Quản lý trạng thái tab hiện tại và hộ đang khảo sát
+    if "prev_survey_hoso" not in st.session_state or st.session_state["prev_survey_hoso"] != ho_so:
+        st.session_state["prev_survey_hoso"] = ho_so
+        st.session_state["dtv_form_tab"] = "📊 1. Thông tin chung"
+        
+    nk_key = f"nk_{ho_so}_{ver}"
+    if nk_key not in st.session_state:
+        st.session_state[nk_key] = 1
+        
     loc = streamlit_geolocation() if streamlit_geolocation else None
-    t1, t2, t3 = st.tabs(["📊 1. Thông tin chung", "📋 2. Kê khai chỉ tiêu", "🧾 3. Tổng hợp"])
     
-    with t1:
+    # Thanh điều hướng Tab đẹp và tương tác trực quan
+    tabs_options = ["📊 1. Thông tin chung", "📋 2. Kê khai chỉ tiêu", "🧾 3. Tổng hợp"]
+    col_tabs = st.columns(3)
+    for idx_tab, val_tab in enumerate(tabs_options):
+        is_active = (st.session_state["dtv_form_tab"] == val_tab)
+        btn_type = "primary" if is_active else "secondary"
+        if col_tabs[idx_tab].button(val_tab, key=f"dtv_tab_nav_{idx_tab}", use_container_width=True, type=btn_type):
+            st.session_state["dtv_form_tab"] = val_tab
+            st.rerun()
+            
+    st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+    
+    active_tab = st.session_state["dtv_form_tab"]
+    
+    if active_tab == "📊 1. Thông tin chung":
         with card_container("Thông tin chủ hộ"):
             st.info(f"📍 Chủ hộ: {ho['TenChuHo']} | Địa bàn: {ho['DiaBan']} | Xã: {ho['Xa']}")
-            nk = st.number_input("Số nhân khẩu thực tế", min_value=1, max_value=30, value=1, key=f"nk_{ho_so}_{ver}")
+            nk = st.number_input("Số nhân khẩu thực tế", min_value=1, max_value=30, value=int(st.session_state.get(nk_key, 1)), key=nk_key)
             
-    with t2:
+        # Nút nhấn chuyển tiếp thuận tiện ở cuối trang
+        st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+        if st.button("Tiếp tục: Kê khai chỉ tiêu ➡️", type="primary", use_container_width=True, key="btn_next_1"):
+            st.session_state["dtv_form_tab"] = "📋 2. Kê khai chỉ tiêu"
+            st.rerun()
+            
+    elif active_tab == "📋 2. Kê khai chỉ tiêu":
         nhap_lieu_5_nhom(ho_so, ver)
         
-    with t3:
+        # Nút nhấn quay lại và chuyển tiếp thuận tiện ở cuối trang
+        st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
+        c_nav = st.columns(2)
+        if c_nav[0].button("⬅️ Quay lại: Thông tin chung", type="secondary", use_container_width=True, key="btn_back_2"):
+            st.session_state["dtv_form_tab"] = "📊 1. Thông tin chung"
+            st.rerun()
+        if c_nav[1].button("Tiếp tục: Tổng hợp kết quả ➡️", type="primary", use_container_width=True, key="btn_next_2"):
+            st.session_state["dtv_form_tab"] = "🧾 3. Tổng hợp"
+            st.rerun()
+            
+    elif active_tab == "🧾 3. Tổng hợp":
+        nk = int(st.session_state.get(nk_key, 1))
         dl = tong_hop_du_lieu_phieu(ho_so, ver)
         ok, loi = kiem_tra_validation_phieu(ho_so, ver)
         tong = tinh_tong_7_nguon(dl["tong_7"])
@@ -1188,7 +1351,14 @@ def dtv_nhap_phieu():
             for m in loi:
                 hien_loi_validation(m)
                 
-        if st.button("💾 Thực hiện Lưu & Gửi phiếu", type="primary", use_container_width=True, disabled=not ok):
+        # Nút nhấn quay lại và hành động gửi phiếu ở cuối trang
+        st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
+        c_nav3 = st.columns([1, 2])
+        if c_nav3[0].button("⬅️ Quay lại: Kê khai chỉ tiêu", type="secondary", use_container_width=True, key="btn_back_3"):
+            st.session_state["dtv_form_tab"] = "📋 2. Kê khai chỉ tiêu"
+            st.rerun()
+            
+        if c_nav3[1].button("💾 Thực hiện Lưu & Gửi phiếu", type="primary", use_container_width=True, disabled=not ok, key="btn_submit_phiet"):
             gps = phan_tich_vi_tri_gps(loc)
             geo = phan_tich_geofence(ho, loc)
             row = tao_dong_ket_qua_qd1099(
@@ -1200,6 +1370,7 @@ def dtv_nhap_phieu():
                 st.toast("Đã gửi phiếu lên hệ thống thành công!", icon="✅")
                 # Đổi phiên bản form để làm sạch bộ nhớ tạm thời trên Streamlit
                 st.session_state["form_ver"] = ver + 1
+                st.session_state["dtv_form_tab"] = "📊 1. Thông tin chung"
                 st.rerun()
 
 
