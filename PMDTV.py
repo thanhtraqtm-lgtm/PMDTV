@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 PMDTV.py — Phiếu hỏi điều tra thu nhập năm 2026 (Streamlit + Google Sheets).
-Mã nguồn đã được Việt hóa toàn diện, tuân thủ chặt chẽ biểu mẫu và logic
-của Quyết định 1099/QĐ-BKHĐT, đảm bảo tính trực quan và thân thiện với người dùng cuối.
+Đã được tái cấu trúc giao diện sang dạng sidebar, dashboard hiện đại và
+tuân thủ chặt chẽ Quyết định 1099/QĐ-BKHĐT.
 """
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-NAVY_PRIMARY = "#0d2137"
+NAVY_PRIMARY = "#0a2351"
 NAVY_ACCENT = "#1a4a7a"
 NAVY_LIGHT = "#e8eef5"
 
@@ -60,313 +60,100 @@ def apply_custom_style() -> None:
             --navy-light: {NAVY_LIGHT};
         }}
         
-        /* Hide streamlit default sidebar & header */
-        [data-testid="stSidebar"] {{
-            display: none !important;
-        }}
+        /* Ẩn header mặc định của Streamlit */
         header[data-testid="stHeader"] {{
             display: none !important;
         }}
         
         .stApp {{
-            background: #f8fafc;
+            background: #f0f2f5;
         }}
         
-        /* Spacing for main block container */
+        /* Sidebar */
+        [data-testid="stSidebar"] {{
+            background-color: {NAVY_PRIMARY};
+            padding: 1rem;
+        }}
+        [data-testid="stSidebar"] .stButton > button {{
+             background-color: {NAVY_ACCENT};
+             color: white;
+             border-radius: 8px;
+             width: 100%;
+        }}
+         [data-testid="stSidebar"] .stRadio > label {{
+             font-size: 1.1rem;
+             font-weight: 700;
+             color: white;
+             margin-bottom: 1rem;
+        }}
+        [data-testid="stSidebar"] .stRadio > div > label p {{
+            color: white;
+            font-size: 1.05rem;
+            padding: 0.5rem 0;
+        }}
+
+        /* Main content container */
         .main .block-container {{
             padding-top: 1.5rem !important;
             padding-bottom: 3rem !important;
-            max-width: 1200px !important;
+            max-width: 95% !important;
             margin: 0 auto !important;
         }}
         
-        /* Clean Modern App UI Components */
+        /* Các thành phần UI */
         .card-box {{
             background: #ffffff;
-            border-radius: 14px;
+            border-radius: 12px;
             padding: 1.35rem 1.6rem;
             margin-bottom: 1.5rem;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03), 0 1px 2px rgba(15, 23, 42, 0.06);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             border: 1px solid #e2e8f0;
-            transition: all 0.2s ease-in-out;
         }}
-        .card-box:hover {{
-            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
-            border-color: #cbd5e1;
-        }}
-        
-        /* Top Navigation Badges & Layouts */
+
         .user-badge-card {{
             display: flex;
             align-items: center;
             gap: 12px;
-            background: #ffffff;
-            padding: 8px 14px;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 2px 4px rgba(15,23,42,0.02);
-            height: 100%;
+            background: {NAVY_ACCENT};
+            padding: 12px 14px;
+            border-radius: 10px;
+            margin-bottom: 2rem;
         }}
         .avatar-circle {{
-            background: linear-gradient(135deg, #1e293b, #0f172a);
-            width: 34px;
-            height: 34px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #ffffff;
+            color: {NAVY_PRIMARY};
+            background-color: white;
             font-weight: 700;
-            font-size: 14px;
-            box-shadow: 0 2px 4px rgba(15,23,42,0.1);
+            font-size: 16px;
         }}
         .user-title {{
-            font-size: 12.5px;
+            font-size: 1rem;
             font-weight: 700;
-            color: #0f172a;
+            color: #ffffff;
             line-height: 1.2;
         }}
         .user-role {{
-            font-size: 10.5px;
-            color: #64748b;
+            font-size: 0.8rem;
+            color: #d1d5db; /* Light gray for role */
             font-weight: 500;
-            margin-top: 1px;
-        }}
-        
-        .surveyor-badge {{
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            color: #166534;
-            padding: 9px 16px;
-            border-radius: 12px;
-            font-size: 12px;
-            line-height: 1.5;
-            height: 100%;
-        }}
-        .status-dot {{
-            color: #22c55e;
-            font-size: 14px;
-            animation: pulse-green 2s infinite;
-        }}
-        @keyframes pulse-green {{
-            0% {{ opacity: 0.4; }}
-            50% {{ opacity: 1; }}
-            100% {{ opacity: 0.4; }}
-        }}
-        
-        .canh-bao-qd1099 {{
-            background: #fefbeb;
-            border-left: 4px solid #ef4444;
-            padding: 0.9rem 1.1rem;
-            border-radius: 8px;
-            margin: 0.5rem 0 1.2rem 0;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            color: #991b1b;
-            font-weight: 500;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }}
-        .canh-bao-vang {{
-            background: #fffbeb;
-            border-left: 4px solid #f59e0b;
-            padding: 0.8rem 1.1rem;
-            border-radius: 8px;
-            margin: 0.5rem 0;
-            font-size: 0.88rem;
-            line-height: 1.5;
-            color: #92400e;
-            font-weight: 500;
-        }}
-        .canh-bao-do, .input-loi-do {{
-            background: #fef2f2 !important;
-            border-left: 4px solid #ef4444;
-            padding: 0.8rem 1.1rem;
-            border-radius: 8px;
-            margin: 0.5rem 0;
-            font-size: 0.88rem;
-            line-height: 1.5;
-            color: #991b1b;
-            font-weight: 500;
+            margin-top: 2px;
         }}
         
         div[data-testid="stMetric"] {{
-            background: #ffffff;
-            padding: 1rem 1.25rem;
+            background-color: #FFFFFF;
+            border: 1px solid #E0E0E0;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(15, 23, 42, 0.015), 0 1px 2px rgba(15, 23, 42, 0.03);
-            border: 1px solid #e2e8f0;
+            padding: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
         }}
-        
-        /* Sticky Header Pinning CSS */
-        div[data-testid="stVerticalBlock"] > div:has(#sticky-header),
-        div[data-testid="stVerticalBlockBorder"]:has(#sticky-header) {{
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            z-index: 999991 !important;
-            background-color: #f8fafc !important;
-            border-bottom: 2px solid #e2e8f0 !important;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 10px 0 0 0 !important;
-        }}
-        
-        div[data-testid="stVerticalBlock"] > div:has(#sticky-header) > div,
-        div[data-testid="stVerticalBlockBorder"]:has(#sticky-header) > div {{
-            max-width: 1200px !important;
-            margin: 0 auto !important;
-            padding: 0px 1.5rem 10px 1.5rem !important;
-        }}
-
-        .sticky-header-spacer {{
-            height: 290px !important;
-            width: 100% !important;
-        }}
-        
-        .app-main-title {{
-            color: #0d2137;
-            font-weight: 800;
-            margin-bottom: 0px;
-            font-size: 22px;
-            text-transform: uppercase;
-            letter-spacing: -0.3px;
-        }}
-
-        .main-title-wrapper {{
-            text-align: center;
-            margin-top: -12px;
-            margin-bottom: 15px;
-        }}
-        
-        /* Modern tabs customization */
-        div[data-testid="stTabs"] button {{
-            font-weight: 600 !important;
-            font-size: 13.5px !important;
-            padding: 8px 16px !important;
-            color: #64748b !important;
-        }}
-        div[data-testid="stTabs"] button[aria-selected="true"] {{
-            color: #0284c7 !important;
-            border-bottom-color: #0284c7 !important;
-        }}
-        
-        @media (max-width: 1200px) {{
-            .sticky-header-spacer {{
-                height: 265px !important;
-            }}
-        }}
-
-        @media (max-width: 992px) {{
-            .sticky-header-spacer {{
-                height: 240px !important;
-            }}
-            .app-main-title {{
-                font-size: 18px !important;
-            }}
-        }}
-        
-        @media (max-width: 768px) {{
-            .main .block-container {{
-                padding-top: 1.5rem !important;
-            }}
-            div[data-testid="stTabs"] button {{
-                font-size: 11.5px !important;
-                padding: 6px 12px !important;
-            }}
-            .sticky-header-spacer {{
-                height: 185px !important;
-            }}
-            .app-main-title {{
-                font-size: 15px !important;
-                letter-spacing: -0.5px !important;
-                white-space: nowrap !important;
-            }}
-            .main-title-wrapper {{
-                margin-top: -8px;
-                margin-bottom: 8px;
-            }}
-            
-            /* Thắt chặt khoảng cách và buộc các cột trong phần badge ở đầu trang không bị rớt dòng */
-            div:has(#sticky-header) div[data-testid="stHorizontalBlock"] {{
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-                gap: 6px !important;
-                align-items: center !important;
-            }}
-            /* Cho phép cột chứa Badge co giãn và cột chứa Đăng xuất ôm khít */
-            div:has(#sticky-header) div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {{
-                min-width: 0 !important;
-                width: auto !important;
-                flex: 1 1 auto !important;
-            }}
-            /* Riêng cột chứa nút Đăng xuất thì cho kích thước nhỏ gọn */
-            div:has(#sticky-header) div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:last-child {{
-                flex: 0 0 100px !important;
-                width: 100px !important;
-            }}
-            
-            /* Tiết kiệm diện tích màn hình điện thoại cho Badge */
-            .surveyor-badge-sub {{
-                display: none !important;
-            }}
-            .surveyor-badge {{
-                padding: 6px 10px !important;
-                font-size: 10px !important;
-                border-radius: 8px !important;
-            }}
-            .user-badge-card {{
-                padding: 6px 10px !important;
-                border-radius: 8px !important;
-                gap: 6px !important;
-            }}
-            .user-title {{
-                font-size: 11px !important;
-            }}
-            .user-role {{
-                font-size: 8.5px !important;
-                margin-top: 0px !important;
-            }}
-            .avatar-circle {{
-                width: 28px !important;
-                height: 28px !important;
-                font-size: 12px !important;
-            }}
-            
-            /* CSS thu nhỏ nút Đăng xuất Streamlit */
-            div:has(#sticky-header) div[data-testid="stColumn"]:last-child div[data-testid="stButton"] button,
-            div[data-testid="stButton"]:has(button[key="logout_btn"]) button {{
-                padding: 4px 6px !important;
-                min-height: unset !important;
-                height: 36px !important;
-            }}
-            div:has(#sticky-header) div[data-testid="stColumn"]:last-child div[data-testid="stButton"] button p,
-            div:has(#sticky-header) div[data-testid="stColumn"]:last-child div[data-testid="stButton"] button span,
-            div[data-testid="stButton"]:has(button[key="logout_btn"]) button p,
-            div[data-testid="stButton"]:has(button[key="logout_btn"]) button span {{
-                font-size: 11px !important;
-                font-weight: 700 !important;
-            }}
-        }}
-
-        @media (max-width: 480px) {{
-            .sticky-header-spacer {{
-                height: 165px !important;
-            }}
-            .app-main-title {{
-                font-size: 12.5px !important;
-            }}
-            div:has(#sticky-header) div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:last-child {{
-                flex: 0 0 90px !important;
-                width: 90px !important;
-            }}
-            div:has(#sticky-header) div[data-testid="stColumn"]:last-child div[data-testid="stButton"] button {{
-                height: 32px !important;
-            }}
+        div[data-testid="stMetric"] > div:nth-child(2) > div {{
+            font-size: 2rem;
+            font-weight: 700;
         }}
         </style>
         """,
@@ -374,32 +161,22 @@ def apply_custom_style() -> None:
     )
 
 def hien_thi_banner() -> None:
-    """Hiển thị ảnh ngang nằm ở trên cùng của trang (tương thích GitHub image/panel.png)"""
+    """Hiển thị ảnh ngang ở đầu trang."""
     import os
-    # Thêm khoảng trống lịch sự phía trên để tránh ảnh bị sát mép trên cùng
-    st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
     image_path = "image/panel.png"
-    # Dùng ảnh dự phòng của Unsplash nếu file chưa tồn tại local để tránh lỗi hiển thị trống
     fallback_url = "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=2000&h=300"
     
     if os.path.exists(image_path):
         st.image(image_path, use_container_width=True)
     else:
         st.image(fallback_url, use_container_width=True)
-        
-    st.markdown(
-        """
-        <div class="main-title-wrapper">
-            <h2 class="app-main-title">HỆ THỐNG ĐIỀU TRA THU NHẬP HỘ</h2>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    st.markdown("<h2 style='text-align: center; margin-top: -60px; color: white; text-shadow: 2px 2px 4px #000000;'>HỆ THỐNG ĐIỀU TRA THU NHẬP HỘ</h2>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
 
 @contextmanager
 def card_container(title: str | None = None):
-    """Khối nội dung đẹp mắt với lớp CSS card-box dùng làm vùng nhập liệu."""
-    tieu_de = f"<p style='margin:0 0 0.75rem;font-weight:600;color:{NAVY_PRIMARY};'>{title}</p>" if title else ""
+    """Khối nội dung trong thẻ card-box."""
+    tieu_de = f"<h3 style='margin-bottom: 1rem; color: {NAVY_PRIMARY};'>{title}</h3>" if title else ""
     st.markdown(f'<div class="card-box">{tieu_de}', unsafe_allow_html=True)
     try:
         yield
@@ -435,34 +212,33 @@ PHIEU_THU_NHAP_CONFIG = [
     {
         "id": "muc2", "ten": "Mục 2: Thu nhập từ trồng trọt", "loai": "nong_nghiep",
         "cau_hoi": "Trong 12 tháng qua hộ ông/bà có phát sinh thu nhập - chi phí từ hoạt động trồng trọt không?",
-        "chi_phi_cols": ["Giống", "Phân bón, thuốc BVTV", "Chi khác"]
+        "chi_phi_cols": ["CP Giống", "CP Phân bón, BVTV", "CP Khác"]
     },
     {
         "id": "muc3", "ten": "Mục 3: Thu nhập từ chăn nuôi", "loai": "nong_nghiep",
         "cau_hoi": "Trong 12 tháng qua hộ ông/bà có phát sinh thu nhập - chi phí từ hoạt động chăn nuôi hoặc từ sản bắt, đánh bẫy, thuần dưỡng chim, thú không?",
-        "chi_phi_cols": ["Giống", "Thức ăn, thuốc phòng và chữa bệnh", "Chi khác"]
+        "chi_phi_cols": ["CP Giống", "CP Thức ăn, thuốc", "CP Khác"]
     },
     {
         "id": "muc4", "ten": "Mục 4: Thu nhập từ lâm nghiệp", "loai": "nong_nghiep",
-        "cau_hoi": "Trong 12 tháng qua hộ ông/bà có phát sinh thu nhập - chi phí từ hoạt động lâm nghiệp (khai thác gỗ, khai thác và thu nhặt sản phẩm từ rừng và cây lâm nghiệp phân tán, ươm các loại giống cây lâm nghiệp, trồng/quản lý/bảo vệ/chăm sóc rừng, hoạt động dịch vụ lâm nghiệp,...) không?",
-        "chi_phi_cols": ["Giống", "Phân bón, thuốc trừ sâu, diệt cỏ, bảo vệ thực vật", "Chi khác"]
+        "cau_hoi": "Trong 12 tháng qua hộ ông/bà có phát sinh thu nhập - chi phí từ hoạt động lâm nghiệp không?",
+        "chi_phi_cols": ["CP Giống", "CP Phân bón, BVTV", "CP Khác"]
     },
     {
         "id": "muc5", "ten": "Mục 5: Thu nhập từ thủy sản", "loai": "nong_nghiep",
-        "cau_hoi": "Trong 12 tháng qua hộ ông/bà có phát sinh thu nhập - chi phí từ hoạt động thủy sản (nuôi trồng/đánh bắt thủy hải sản ở ao hồ, sông, suối, biển) không?",
-        "chi_phi_cols": ["Giống", "Thức ăn, thuốc phòng và chữa bệnh", "Chi khác"]
+        "cau_hoi": "Trong 12 tháng qua hộ ông/bà có phát sinh thu nhập - chi phí từ hoạt động thủy sản không?",
+        "chi_phi_cols": ["CP Giống", "CP Thức ăn, thuốc", "CP Khác"]
     },
     {
         "id": "muc6", "ten": "Mục 6: Thu nhập từ hoạt động SXKD phi nông, lâm nghiệp, thủy sản", "loai": "sxkd",
         "cau_hoi": "Trong 12 tháng qua hộ ông/bà có phát sinh thu nhập - chi phí từ hoạt động SXKD phi nông, lâm nghiệp, thủy sản của hộ không?",
-        "chi_phi_cols": ["Nguyên vật liệu chính, phụ, thực liệu", "Năng lượng, nhiên liệu", "Chi khác"]
+        "chi_phi_cols": ["CP Nguyên vật liệu", "CP Năng lượng", "CP Khác"]
     },
     {
         "id": "muc7", "ten": "Mục 7: Thu nhập khác", "loai": "khac",
-        "cau_hoi": "Xin ông/bà cho biết trong 12 tháng qua, hộ ông/bà có nhận được các nguồn thu nhập nào sau đây không?"
+        "cau_hoi": "Trong 12 tháng qua, hộ ông/bà có nhận được các nguồn thu nhập nào khác không?"
     }
 ]
-
 
 # 7 nguồn thu nhập hiển thị chung
 BAO_CAO_7_NGUON: list[tuple[str, str]] = [
@@ -477,11 +253,10 @@ BAO_CAO_7_NGUON: list[tuple[str, str]] = [
 
 GEO_NGUONG_CHAP_NHAN_M = 500
 GEO_NGUONG_CANH_BAO_M = 2000
-CANH_BAO_GEO_VANG = "Vị trí hiện tại ở ngoài phạm vi địa bàn thôn/xóm. Hãy kiểm tra lại"
-CANH_BAO_GEO_DO = "Cảnh báo: Tọa độ lệch quá lớn. Nghi vấn vị trí giả"
+CANH_BAO_GEO_VANG = "Vị trí hiện tại ở ngoài phạm vi địa bàn thôn/xóm. Hãy kiểm tra lại."
+CANH_BAO_GEO_DO = "Cảnh báo: Tọa độ lệch quá lớn. Nghi vấn vị trí giả."
 
 COL_HO = ["Huyen", "Xa", "DiaBan", "HoSo", "TenChuHo"]
-SO_HO_NEN = 100
 SO_HO_MAU = 40
 COL_PHAN_LOAI = "PhanLoai"
 PHAN_LOAI_MAU = "Mẫu"
@@ -535,10 +310,22 @@ ANH_XA_TEN_COT: dict[str, str] = {
     "ghichuvitri": "GhiChuViTri", "ghichu": "GhiChuViTri", "lydolech": "GhiChuViTri",
 }
 
-
 # ---------------------------------------------------------------------------
 # 3. CÁC HÀM TIỆN ÍCH DỮ LIỆU & CHUẨN HÓA TRƯỜNG THÔNG TIN
 # ---------------------------------------------------------------------------
+@st.cache_data
+def tai_danh_muc_san_pham():
+    """Đọc và cache danh mục sản phẩm từ file JSON."""
+    try:
+        with open("danh_muc_san_pham.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        st.error("Lỗi: Không tìm thấy tệp 'danh_muc_san_pham.json'. Vui lòng tạo tệp này.")
+        return {}
+    except json.JSONDecodeError:
+        st.error("Lỗi: Tệp 'danh_muc_san_pham.json' có định dạng không hợp lệ.")
+        return {}
+
 def _bo_dau_chuoi(s: str) -> str:
     """Loại bỏ dấu tiếng Việt, chuyển chữ thường, xóa khoảng trắng và gạch ngang."""
     s = str(s).strip().replace("Đ", "D").replace("đ", "d")
@@ -961,35 +748,41 @@ def nhap_muc_1_luong(ho_so: str, form_ver: int, thanh_vien: list[dict[str, Any]]
     cols_f[1].metric("Tổng lương", f"{total_luong:,.0f}")
     cols_f[2].metric("Tổng trợ cấp", f"{total_tro_cap:,.0f}")
 
-def nhap_muc_nong_nghiep_sxkd(muc_id: str, ten_muc: str, chi_phi_cols: list[str], ho_so: str, form_ver: int):
+def nhap_muc_nong_nghiep_sxkd(muc: dict, ho_so: str, form_ver: int, danh_muc: dict):
     """Template cho các mục 2, 3, 4, 5, 6."""
+    muc_id = muc["id"]
+    chi_phi_cols = muc["chi_phi_cols"]
     key = _key(muc_id, ho_so, form_ver, "data")
+
     if key not in st.session_state:
         st.session_state[key] = []
-    
+
     # Form thêm dòng mới
-    st.markdown("---")
-    st.markdown(f"**Thêm dòng mới**")
-    cols = st.columns([2, 1, 1] + [1] * len(chi_phi_cols))
+    st.markdown("---<br>**Thêm sản phẩm/hoạt động mới**", unsafe_allow_html=True)
     
-    nguon_thu = cols[0].text_input("Mô tả hoạt động / sản phẩm", key=_key(muc_id, ho_so, form_ver, "nguon_thu_new"), label_visibility="collapsed")
-    c1 = cols[1].number_input("Trị giá bán/đổi/biếu tặng", min_value=0, key=_key(muc_id, ho_so, form_ver, "c1_new"), label_visibility="collapsed")
-    c2 = cols[2].number_input("Trị giá hộ giữ lại dùng", min_value=0, key=_key(muc_id, ho_so, form_ver, "c2_new"), label_visibility="collapsed")
+    danh_muc_options = danh_muc.get(muc_id, []) + ["Khác"]
+    lua_chon_sp = st.selectbox("Chọn từ danh mục", options=danh_muc_options, key=_key(muc_id, ho_so, form_ver, "sp_select"))
+    nguon_thu_final = st.text_input("Hoặc nhập tên khác", key=_key(muc_id, ho_so, form_ver, "sp_khac")) if lua_chon_sp == "Khác" else lua_chon_sp
+
+    st.markdown("**Nhập giá trị & chi phí tương ứng:**")
+    cols = st.columns(2 + len(chi_phi_cols))
+    c1 = cols[0].number_input("Giá trị bán/đổi", min_value=0, key=_key(muc_id, ho_so, form_ver, "c1_new"))
+    c2 = cols[1].number_input("Giá trị tự dùng", min_value=0, key=_key(muc_id, ho_so, form_ver, "c2_new"))
 
     cp_values = []
     for i, cp_label in enumerate(chi_phi_cols):
-        val = cols[3+i].number_input(cp_label, min_value=0, key=_key(muc_id, ho_so, form_ver, f"cp_{i}_new"), label_visibility="collapsed")
+        val = cols[2+i].number_input(cp_label, min_value=0, key=_key(muc_id, ho_so, form_ver, f"cp_{i}_new"))
         cp_values.append(val)
 
-    if st.button(f"Thêm dòng", key=_key(muc_id, ho_so, form_ver, "add_btn"), type="primary"):
+    if st.button(f"Lưu sản phẩm", key=_key(muc_id, ho_so, form_ver, "add_btn")):
         tong_thu = c1 + c2
         tong_chi_phi = sum(cp_values)
         
         if tong_chi_phi > tong_thu:
-            hien_loi_validation(f"Cảnh báo: Chi phí ({tong_chi_phi:,.0f}) > Tổng trị giá ({tong_thu:,.0f}) của '{nguon_thu}'.")
+            hien_loi_validation(f"Cảnh báo: Chi phí ({tong_chi_phi:,.0f}) > Tổng trị giá ({tong_thu:,.0f}) của '{nguon_thu_final}'.")
         
-        if nguon_thu.strip():
-            new_row = {"nguon_thu": nguon_thu, "c1": c1, "c2": c2}
+        if nguon_thu_final.strip():
+            new_row = {"nguon_thu": nguon_thu_final, "c1": c1, "c2": c2}
             for i, val in enumerate(cp_values):
                 new_row[f"cp_{i}"] = val
             st.session_state[key].append(new_row)
@@ -997,35 +790,32 @@ def nhap_muc_nong_nghiep_sxkd(muc_id: str, ten_muc: str, chi_phi_cols: list[str]
 
     # Bảng hiển thị dữ liệu đã nhập
     if st.session_state[key]:
-        st.markdown(f"**Bảng chi tiết**")
-        
-        # Header động
-        header_cols = ["Mô tả", "Bán/Đổi", "Tự dùng", "Tổng trị giá"] + chi_phi_cols + ["Tổng CP", "Thuần", "Xóa"]
-        cols_h = st.columns([2, 1, 1, 1] + [1] * len(chi_phi_cols) + [1, 1, 0.5])
-        for i, h in enumerate(header_cols):
-             cols_h[i].markdown(f"**{h}**")
-
-        st.markdown("<hr style='margin: 5px 0 10px 0'>", unsafe_allow_html=True)
-        
-        # Dữ liệu
+        st.markdown("---<br>**Bảng chi tiết các khoản thu đã nhập**", unsafe_allow_html=True)
+        df_data = []
         for i, row in enumerate(st.session_state[key]):
             tong_thu = row['c1'] + row['c2']
             cp_vals = [row.get(f'cp_{j}', 0) for j in range(len(chi_phi_cols))]
             tong_chi_phi = sum(cp_vals)
             thu_nhap = tong_thu - tong_chi_phi
+            
+            display_row = {"Sản phẩm/Hoạt động": row['nguon_thu'], "Giá bán/đổi": row['c1'], "Giá tự dùng": row['c2'], "Tổng trị giá": tong_thu}
+            for j, label in enumerate(chi_phi_cols):
+                display_row[label] = cp_vals[j]
+            display_row["Tổng chi phí"] = tong_chi_phi
+            display_row["Thu nhập thuần"] = thu_nhap
+            display_row["xoa"] = i # Index để xóa
+            df_data.append(display_row)
 
-            cols_r = st.columns([2, 1, 1, 1] + [1] * len(chi_phi_cols) + [1, 1, 0.5])
-            cols_r[0].write(row['nguon_thu'])
-            cols_r[1].write(f"{row['c1']:,}")
-            cols_r[2].write(f"{row['c2']:,}")
-            cols_r[3].write(f"**{tong_thu:,}**")
-            for j, cp_val in enumerate(cp_vals):
-                cols_r[4+j].write(f"{cp_val:,}")
-            cols_r[4+len(cp_vals)].write(f"**{tong_chi_phi:,}**")
-            cols_r[5+len(cp_vals)].write(f"**{thu_nhap:,}**")
-            if cols_r[6+len(cp_vals)].button("🗑️", key=_key(muc_id, ho_so, form_ver, f"del_{i}"), help="Xóa dòng này"):
-                del st.session_state[key][i]
-                st.rerun()
+        df_display = pd.DataFrame(df_data)
+        st.data_editor(
+            df_display,
+            column_config={
+                "xoa": st.column_config.ButtonColumn("Xóa", help="Xóa dòng này")
+            },
+            disabled=df_display.columns.drop("xoa"),
+            hide_index=True,
+            key=_key(muc_id, ho_so, form_ver, "editor")
+        )
 
 def nhap_muc_7_khac(ho_so: str, form_ver: int):
     """Mục 7: Thu nhập khác."""
@@ -1057,8 +847,11 @@ def tong_hop_phieu(ho_so: str, form_ver: int) -> dict:
     tong = {}
     
     # Mục 1
-    muc1_data = st.session_state.get(_key("muc1", ho_so, form_ver, "data"), [])
-    tong["Muc1_ThuNhap"] = sum(d['luong'] + d['tro_cap'] for d in muc1_data)
+    if st.session_state.get(_key("muc1", ho_so, form_ver, "co_ko")) == "1. Có":
+        muc1_data = st.session_state.get(_key("muc1", ho_so, form_ver, "data"), [])
+        tong["Muc1_ThuNhap"] = sum(d['luong'] + d['tro_cap'] for d in muc1_data)
+    else:
+        tong["Muc1_ThuNhap"] = 0
     
     # Mục 2-6
     for muc in PHIEU_THU_NHAP_CONFIG:
@@ -1199,332 +992,185 @@ def tao_dong_ket_qua_qd1099(
 
 
 # ---------------------------------------------------------------------------
-# 10. GIAO DIỆN PHƯƠNG THỨC ADMIN (HỆ THỐNG / CHỌN MẪU)
+# 10. GIAO DIỆN CÁC TRANG
 # ---------------------------------------------------------------------------
 def page_login():
-    """Giao diện cửa đăng nhập vai trò."""
-    hien_thi_banner()
-    left, col2, right = st.columns([1, 2, 1])
+    """Giao diện trang đăng nhập."""
+    st.image("image/panel.png", use_container_width=True)
+    st.markdown("<h1 style='text-align: center;'>Hệ thống Điều tra Thu nhập Hộ</h1>", unsafe_allow_html=True)
+    
+    _, col2, _ = st.columns([1, 1.5, 1])
     with col2:
-        with card_container("ĐĂNG NHẬP HỆ THỐNG"):
-            vt = st.radio("Chọn vai trò của bạn", ["Điều tra viên", "Quản trị viên"], horizontal=True)
+        with card_container("Đăng nhập"):
+            vt = st.radio("Vai trò", ["Điều tra viên", "Quản trị viên"], horizontal=True, label_visibility="collapsed")
             if vt == "Quản trị viên":
                 mk = st.text_input("Mật khẩu quản trị", type="password")
-                if st.button("Đăng nhập (Quản trị)", type="primary", use_container_width=True):
+                if st.button("Đăng nhập Quản trị", type="primary", use_container_width=True):
                     if mk.strip().upper() == ADMIN_MA:
-                        st.session_state["user"] = {"ma": ADMIN_MA, "role": "admin", "ten": "Tổng quản trị"}
+                        st.session_state["user"] = {"ma": ADMIN_MA, "role": "admin", "ten": "Quản trị viên"}
                         st.rerun()
                     else:
-                        st.error("Mật khẩu quản trị không chính xác.")
+                        st.error("Mật khẩu không đúng.")
             else:
-                ma = st.text_input("Mã Điều tra viên")
-                mk = st.text_input("Mật khẩu", type="password")
-                if st.button("Đăng nhập (ĐTV)", type="primary", use_container_width=True):
+                ma = st.text_input("Mã Điều tra viên (ĐTV)")
+                mk = st.text_input("Mật khẩu ĐTV", type="password")
+                if st.button("Đăng nhập ĐTV", type="primary", use_container_width=True):
                     ok, loi, r = xac_thuc_dang_nhap(ma, mk)
                     if ok:
-                        st.session_state["user"] = {"ma": ma, "role": "dtv", "ten": r.get("HoTen", "ĐTV")}
+                        st.session_state["user"] = {"ma": ma, "role": "dtv", "ten": r.get("HoTen", f"ĐTV {ma}")}
                         st.rerun()
                     else:
                         st.error(loi)
 
-def admin_he_thong():
-    """Bảng điều khiển gán danh sách và chọn mốc mẫu r, k."""
-    st.write("### ⚙️ Cấu hình hệ thống và phân mẫu")
-    t1, t2 = st.tabs(["📤 Tải lên danh sách hộ", "🎯 Thực hiện chọn mẫu"])
-    
-    with t1:
-        f = st.file_uploader("Tải lên tệp Excel danh sách hộ", type=["xlsx", "xls"])
-        if f and st.button("Tải lên và cập nhật"):
-            df, thieu = doc_excel_danh_sach_ho(f, can_madtv=True)
-            if df is not None:
-                df[COL_PHAN_LOAI] = PHAN_LOAI_NEN
-                if write_sheet_replace(SHEETS["danh_sach_ho"], df):
-                    dong_bo_account_tu_ma_dtv(df["MaDTV"].unique().tolist())
-                    st.success("Tải lên thành công. Các tài khoản ĐTV đã được tạo hoặc cập nhật.")
-            else:
-                st.error(f"Tệp Excel thiếu các cột bắt buộc: {', '.join(thieu)}")
-                
-    with t2:
-        df_ho = read_sheet(SHEETS["danh_sach_ho"])
-        if not df_ho.empty:
-            dtv_codes = df_ho["MaDTV"].unique().tolist()
-            ma = st.selectbox("Chọn ĐTV để phân mẫu", dtv_codes)
-            nen = lay_danh_sach_nen(df_ho, ma)
-            
-            st.write(f"Điều tra viên '{ma}' đang quản lý **{len(nen)}** hộ.")
-            c1, c2 = st.columns(2)
-            k = c1.number_input("Bước nhảy (k)", min_value=1, max_value=100, value=2)
-            r = c2.number_input("Vị trí bắt đầu (r)", min_value=1, max_value=max(1, len(nen)), value=1)
-            
-            if st.button("Thực hiện chọn mẫu"):
-                chi_so = chon_chi_so_mau_tu_nen(len(nen), int(k), int(r), so_luong_can_chon=SO_HO_MAU)
-                if not chi_so:
-                    st.error("Số lượng hộ không đủ để chọn mẫu.")
-                else:
-                    df_da_phan = gan_phan_loai_ho(nen, chi_so)
-                    df_out = cap_nhat_danh_sach_ho_theo_dtv(df_ho, ma, df_da_phan)
-                    if write_sheet_replace(SHEETS["danh_sach_ho"], df_out):
-                        st.success(f"Đã chọn thành công {SO_HO_MAU} hộ mẫu cho ĐTV {ma}.")
-                        hien_dataframe_an_toan(df_da_phan)
-
-
-# ---------------------------------------------------------------------------
-# 11. ĐIỀU TRA VIÊN: LUỒNG THỰC THI NHẬP PHIẾU
-# ---------------------------------------------------------------------------
-def dtv_nhap_phieu():
-    user = st.session_state["user"]
-    ma_dtv = user["ma"]
-    ver = st.session_state.get("form_ver", 0)
-    
-    st.write(f"### 📝 Nhập phiếu điều tra - ĐTV: **{ma_dtv}**")
-    
-    df_ho = ho_mau_can_dieu_tra(lay_danh_sach_nen(read_sheet(SHEETS["danh_sach_ho"], silent=True), ma_dtv))
-    if df_ho.empty:
-        st.warning("Bạn chưa được phân công hộ mẫu nào. Vui lòng liên hệ quản trị viên.")
-        return
-        
-    df_kq = read_sheet(SHEETS["ket_qua"], silent=True)
-    done = set(df_kq[df_kq["MaDTV"].astype(str) == str(ma_dtv)]["HoSo"].astype(str)) if not df_kq.empty else set()
-    pending = df_ho[~df_ho["HoSo"].astype(str).isin(done)]
-    
-    if pending.empty:
-        st.success("🎉 Chúc mừng! Bạn đã hoàn thành 100% số hộ được giao.")
-        return
-        
-    idx = st.selectbox("Chọn hộ để bắt đầu điều tra", range(len(pending)), format_func=lambda i: f"Hộ {pending.iloc[i]['HoSo']} - {pending.iloc[i]['TenChuHo']}")
-    ho = pending.iloc[idx]
-    ho_so = str(ho['HoSo'])
-    
-    # Quản lý trạng thái tab và làm mới khi đổi hộ
-    if "prev_hoso" not in st.session_state or st.session_state.prev_hoso != ho_so:
-        st.session_state.prev_hoso = ho_so
-        st.session_state.form_ver = ver + 1
-        st.rerun()
-
-    ver = st.session_state.form_ver # Lấy lại version mới nhất
-    
-    tabs_options = ["Phần A: Thông tin chung", "Phần B: Thu nhập", "Phần C: Tổng hợp"]
-    active_tab = st.radio("Điều hướng:", tabs_options, horizontal=True, key=_key("main_tabs", ho_so, ver))
-
-    if active_tab == "Phần A: Thông tin chung":
-        with card_container("PHẦN A: THÔNG TIN CHUNG"):
-            st.info(f"Hộ số: {ho_so} | Tên chủ hộ: {ho['TenChuHo']} | Địa bàn: {ho['DiaBan']}, {ho['Xa']}")
-            
-            # Nhân khẩu
-            st.number_input(
-                "Tổng số nhân khẩu thực tế thường trú (ổn định >6 tháng/năm)",
-                min_value=1, max_value=30, value=1,
-                key=_key("chung", ho_so, ver, "nhan_khau_tt")
-            )
-            
-            # Thành viên
-            thanh_vien = nhap_thanh_vien_ho(ho_so, ver)
-            st.session_state[_key("chung", ho_so, ver, "thanh_vien")] = thanh_vien
-
-    elif active_tab == "Phần B: Thu nhập":
-        st.info("Đơn vị tính: 1.000 đồng/năm")
-        for muc in PHIEU_THU_NHAP_CONFIG:
-            if muc["loai"] != "thong_tin_chung":
-                with card_container(muc["ten"]):
-                    co_ko = st.radio(muc["cau_hoi"], ["1. Có", "2. Không"], index=1, horizontal=True, key=_key(muc["id"], ho_so, ver, "co_ko"))
-                    
-                    if co_ko == "1. Có":
-                        if muc["loai"] == "luong":
-                            thanh_vien = st.session_state.get(_key("chung", ho_so, ver, "thanh_vien"), [])
-                            nhap_muc_1_luong(ho_so, ver, thanh_vien)
-                        elif muc["loai"] in ["nong_nghiep", "sxkd"]:
-                            nhap_muc_nong_nghiep_sxkd(muc["id"], muc["ten"], muc["chi_phi_cols"], ho_so, ver)
-                        elif muc["loai"] == "khac":
-                            nhap_muc_7_khac(ho_so, ver)
-
-    elif active_tab == "Phần C: Tổng hợp":
-        with card_container("BIỂU TỔNG HỢP THU NHẬP CỦA HỘ NĂM"):
-            tong_hop = tong_hop_phieu(ho_so, ver)
-            
-            # Bảng tổng hợp
-            df_tong_hop = pd.DataFrame([
-                {"Nguồn thu nhập": name, "Tổng thu nhập (1.000 đồng/năm)": f"{tong_hop.get(key, 0):,.0f}"}
-                for key, name in BAO_CAO_7_NGUON
-            ])
-            st.dataframe(df_tong_hop, hide_index=True, use_container_width=True)
-            
-            st.metric("TỔNG THU NHẬP CỦA HỘ NĂM (1.000 đồng)", f"{tong_hop.get('TongThuNhap', 0):,.0f}")
-            
-            ok, errors = kiem_tra_validation_phieu(ho_so, ver)
-            if not ok:
-                for e in errors:
-                    st.error(e)
-            
-            nhan_khau = st.session_state.get(_key("chung", ho_so, ver, "nhan_khau_tt"), 1)
-            loc = streamlit_geolocation() if streamlit_geolocation else None
-
-            if st.button("💾 Gửi kết quả điều tra", type="primary", use_container_width=True, disabled=not ok):
-                gps = phan_tich_vi_tri_gps(loc)
-                geo = phan_tich_geofence(ho, loc)
-                row = tao_dong_ket_qua_qd1099(
-                    ma_dtv=ma_dtv, ho=ho, nhan_khau=nhan_khau,
-                    tong_hop=tong_hop, loc=loc, gps=gps, geo=geo, ghi_chu_vi_tri=""
-                )
-                if append_ket_qua(row):
-                    st.success("Gửi phiếu điều tra thành công!")
-                    st.session_state.form_ver = ver + 1 
-                    st.rerun()
-
-# ---------------------------------------------------------------------------
-# 12. RUNTIME GRAPHICS & TIẾN ĐỘ THỐNG KÊ (DASHBOARD)
-# ---------------------------------------------------------------------------
-def check_or_get_ket_qua() -> pd.DataFrame:
-    df_kq = read_sheet(SHEETS["ket_qua"], silent=True)
-    if df_kq.empty or len(df_kq) == 0:
-        st.session_state["using_mock_statistics"] = True
-        return pd.DataFrame() 
-        
-    st.session_state["using_mock_statistics"] = False
-    numeric_cols = [k for k, _ in BAO_CAO_7_NGUON] + ["TongThuNhap", "ThuBQDauNguoi", "NhanKhauTT"]
-    for col in numeric_cols:
-        if col in df_kq.columns:
-            df_kq[col] = pd.to_numeric(df_kq[col], errors="coerce").fillna(0.0)
-            
-    return df_kq
-
-def render_admin_dashboard():
-    st.write("### 📊 Bảng điều khiển (Dashboard)")
-    
+def admin_dashboard():
+    """Trang Dashboard chính của Admin."""
+    hien_thi_banner()
     df_kq = check_or_get_ket_qua()
     df_ho = read_sheet(SHEETS["danh_sach_ho"], silent=True)
-    
-    if st.session_state.get("using_mock_statistics", False):
-        st.info("Chưa có dữ liệu. Giao diện đang hiển thị ở chế độ minh họa.")
-        total_samples, completed, ratio = 0, 0, 0
-    else:
-        total_samples = len(ho_mau_can_dieu_tra(df_ho)) if not df_ho.empty else 0
-        completed = len(df_kq) if not df_kq.empty else 0
-        ratio = round(completed / max(1, total_samples) * 100, 1) if total_samples > 0 else 0
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Tổng số hộ mẫu", f"{total_samples} hộ")
-    c2.metric("Số phiếu đã nhập", f"{completed} phiếu")
-    c3.metric("Tỷ lệ hoàn thành", f"{ratio}%")
-    
+    total_mau = len(ho_mau_can_dieu_tra(df_ho)) if not df_ho.empty else 0
+    completed = len(df_kq) if not df_kq.empty else 0
+    pending = total_mau - completed
+    ratio = round(completed / max(1, total_mau) * 100, 1) if total_mau > 0 else 0
+    avg_income = df_kq['TongThuNhap'].mean() if completed > 0 else 0
+
+    st.markdown("### Tổng quan tiến độ")
+    cols = st.columns(4)
+    cols[0].metric("Hộ đã điều tra", f"{completed}")
+    cols[1].metric("Hộ chưa làm", f"{pending}")
+    cols[2].metric("Thu nhập TB/Hộ", f"{avg_income:,.0f}")
+    cols[3].metric("Tỷ lệ hoàn thành", f"{ratio}%")
+
+    st.markdown("### Phân tích nhanh")
     if completed > 0:
-        col_g1, col_g2 = st.columns(2)
-        with col_g1:
-            st.write("#### Phân bố thu nhập bình quân")
-            fig_hist = px.histogram(
-                df_kq, x="ThuBQDauNguoi", nbins=15, 
-                labels={"ThuBQDauNguoi": "Thu nhập BQ/người/năm (1.000đ)"}
-            )
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Phân bố thu nhập BQ/người**")
+            fig_hist = px.histogram(df_kq, x="ThuBQDauNguoi", nbins=15, labels={"ThuBQDauNguoi": "Thu nhập (nghìn đ/năm)"})
             st.plotly_chart(fig_hist, use_container_width=True)
-            
-        with col_g2:
-            st.write("#### Tỷ trọng các nguồn thu nhập")
-            sources_data = []
-            for key, name in BAO_CAO_7_NGUON:
-                val = df_kq.get(key, pd.Series([0.0])).mean()
-                sources_data.append({"Nguồn thu": name, "Giá trị bình quân (1.000đ)": val})
-            
-            df_sources = pd.DataFrame(sources_data).query("`Giá trị bình quân (1.000đ)` > 0")
-            fig_pie = px.pie(
-                df_sources, values="Giá trị bình quân (1.000đ)", names="Nguồn thu",
-                color_discrete_sequence=px.colors.qualitative.Pastel
-            )
+        with col2:
+            st.write("**Cơ cấu các nguồn thu nhập**")
+            sources_data = [{
+                "Nguồn": name.split('. ')[1],
+                "Giá trị TB": df_kq.get(key, pd.Series([0.0])).mean()
+            } for key, name in BAO_CAO_7_NGUON]
+            df_sources = pd.DataFrame(sources_data).query("`Giá trị TB` > 0")
+            fig_pie = px.pie(df_sources, values="Giá trị TB", names="Nguồn")
             st.plotly_chart(fig_pie, use_container_width=True)
+    else:
+        st.info("Chưa có dữ liệu để hiển thị biểu đồ.")
 
 def admin_tien_do():
-    st.write("### 📈 Thống kê tiến độ điều tra")
+    """Trang thống kê tiến độ chi tiết."""
+    st.markdown("### 📈 Thống kê tiến độ điều tra chi tiết")
     df_ho = read_sheet(SHEETS["danh_sach_ho"])
     df_kq = read_sheet(SHEETS["ket_qua"])
     
     if df_ho.empty:
-        st.warning("Chưa có dữ liệu danh sách hộ.")
-        return
+        st.warning("Chưa có dữ liệu danh sách hộ."); return
         
     df_mau = ho_mau_can_dieu_tra(df_ho)
     if df_mau.empty:
-        st.info("Chưa có hộ nào được chọn mẫu.")
-        return
+        st.info("Chưa có hộ nào được chọn mẫu."); return
         
-    total_mau = len(df_mau)
-    completed = len(df_kq) if not df_kq.empty else 0
-    ton_dong = max(0, total_mau - completed)
-    ti_le = round(completed / max(1, total_mau) * 100, 1)
-    
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Mẫu được giao", f"{total_mau} hộ")
-    col2.metric("Đã điều tra", f"{completed} phiếu")
-    col3.metric("Còn lại", f"{ton_dong} hộ")
-    col4.metric("Tỷ lệ đạt", f"{ti_le}%")
-    
-    t_dtv, t_xa = st.tabs(["👨‍💻 Thống kê theo ĐTV", "🏡 Thống kê theo xã"])
-    
+    t_dtv, t_xa = st.tabs(["👨‍💻 Theo Điều tra viên (ĐTV)", "🏡 Theo Xã"])
     with t_dtv:
-        df_mau_dtv = df_mau.groupby("MaDTV").size().reset_index(name="MauChiDinh")
-        if not df_kq.empty:
-            df_done_dtv = df_kq.groupby("MaDTV").size().reset_index(name="KqHoanThanh")
-            df_tien_do = pd.merge(df_mau_dtv, df_done_dtv, on="MaDTV", how="left").fillna(0)
-        else:
-            df_tien_do = df_mau_dtv.copy()
-            df_tien_do["KqHoanThanh"] = 0
-            
-        df_tien_do["KqHoanThanh"] = df_tien_do["KqHoanThanh"].astype(int)
-        df_tien_do["ConLai"] = (df_tien_do["MauChiDinh"] - df_tien_do["KqHoanThanh"]).clip(lower=0)
-        df_tien_do["TienDo"] = (df_tien_do["KqHoanThanh"] / df_tien_do["MauChiDinh"] * 100).round(1)
-        
-        df_show = df_tien_do.copy()
-        df_show.columns = ["Mã ĐTV", "Số hộ được giao", "Số hộ đã nhập", "Còn lại", "Tỷ lệ (%)"]
-        hien_dataframe_an_toan(df_show)
+        df_mau_dtv = df_mau.groupby("MaDTV").size().reset_index(name="Giao")
+        df_done_dtv = df_kq.groupby("MaDTV").size().reset_index(name="Hoàn thành") if not df_kq.empty else pd.DataFrame(columns=["MaDTV", "Hoàn thành"])
+        df_tien_do = pd.merge(df_mau_dtv, df_done_dtv, on="MaDTV", how="left").fillna(0)
+        df_tien_do["Còn lại"] = (df_tien_do["Giao"] - df_tien_do["Hoàn thành"]).clip(lower=0).astype(int)
+        df_tien_do["Tỷ lệ (%)"] = (df_tien_do["Hoàn thành"] / df_tien_do["Giao"] * 100).round(1)
+        st.dataframe(df_tien_do, use_container_width=True, hide_index=True)
         
     with t_xa:
-        df_mau_xa = df_mau.groupby("Xa").size().reset_index(name="MauChiDinh")
-        if not df_kq.empty:
-            df_done_xa = df_kq.groupby("Xa").size().reset_index(name="KqHoanThanh")
-            df_tien_do_xa = pd.merge(df_mau_xa, df_done_xa, on="Xa", how="left").fillna(0)
-        else:
-            df_tien_do_xa = df_mau_xa.copy()
-            df_tien_do_xa["KqHoanThanh"] = 0
-            
-        df_tien_do_xa["KqHoanThanh"] = df_tien_do_xa["KqHoanThanh"].astype(int)
-        df_tien_do_xa["ConLai"] = (df_tien_do_xa["MauChiDinh"] - df_tien_do_xa["KqHoanThanh"]).clip(lower=0)
-        df_tien_do_xa["TienDo"] = (df_tien_do_xa["KqHoanThanh"] / df_tien_do_xa["MauChiDinh"] * 100).round(1)
-        
-        df_show_xa = df_tien_do_xa.copy()
-        df_show_xa.columns = ["Xã", "Số hộ được giao", "Số hộ đã nhập", "Còn lại", "Tỷ lệ (%)"]
-        hien_dataframe_an_toan(df_show_xa)
+        df_mau_xa = df_mau.groupby("Xa").size().reset_index(name="Giao")
+        df_done_xa = df_kq.groupby("Xa").size().reset_index(name="Hoàn thành") if not df_kq.empty else pd.DataFrame(columns=["Xa", "Hoàn thành"])
+        df_tien_do_xa = pd.merge(df_mau_xa, df_done_xa, on="Xa", how="left").fillna(0)
+        df_tien_do_xa["Còn lại"] = (df_tien_do_xa["Giao"] - df_tien_do_xa["Hoàn thành"]).clip(lower=0).astype(int)
+        df_tien_do_xa["Tỷ lệ (%)"] = (df_tien_do_xa["Hoàn thành"] / df_tien_do_xa["Giao"] * 100).round(1)
+        st.dataframe(df_tien_do_xa, use_container_width=True, hide_index=True)
 
-def admin_thong_ke_tong_hop():
-    st.write("### 📋 Phân tích và thống kê thu nhập")
+def dtv_nhap_phieu():
+    """Trang nhập liệu cho Điều tra viên."""
+    st.markdown(f"### 📝 Nhập phiếu điều tra")
+    user = st.session_state["user"]
+    ma_dtv = user["ma"]
+    form_ver = st.session_state.get("form_ver", 0)
     
-    df_kq = check_or_get_ket_qua()
-    if df_kq.empty:
-        st.warning("Chưa có dữ liệu điều tra để thống kê.")
-        return
+    df_ho = ho_mau_can_dieu_tra(lay_danh_sach_nen(read_sheet(SHEETS["danh_sach_ho"], silent=True), ma_dtv))
+    if df_ho.empty:
+        st.warning("Bạn chưa được phân công hộ mẫu nào."); return
         
-    phan_to = st.radio("Thống kê theo", ["Huyện/Thị xã/Thành phố", "Xã/Phường"], horizontal=True)
-    group_by_col = "MaTKCS" if "Huyện" in phan_to else "Xa"
+    df_kq = read_sheet(SHEETS["ket_qua"], silent=True)
+    done_hoso = set(df_kq[df_kq["MaDTV"].astype(str) == str(ma_dtv)]["HoSo"].astype(str)) if not df_kq.empty else set()
+    pending_ho = df_ho[~df_ho["HoSo"].astype(str).isin(done_hoso)]
+    
+    if pending_ho.empty:
+        st.success("🎉 Chúc mừng! Bạn đã hoàn thành 100% số hộ được giao."); return
+        
+    idx = st.selectbox("Chọn hộ để điều tra", range(len(pending_ho)), format_func=lambda i: f"Hộ {pending_ho.iloc[i]['HoSo']} - {pending_ho.iloc[i]['TenChuHo']}")
+    ho = pending_ho.iloc[idx]
+    ho_so = str(ho['HoSo'])
+    
+    if st.session_state.get("current_hoso") != ho_so:
+        st.session_state.current_hoso = ho_so
+        st.session_state.form_ver = form_ver + 1
+        st.session_state.active_section_index = 0
+        st.rerun()
 
-    df_agg = df_kq.groupby(group_by_col).agg(
-        SoHo=("HoSo", "count"),
-        TongNhanKhau=("NhanKhauTT", "sum"),
-        ThuNhapBQ_Ho=("TongThuNhap", "mean"),
-        ThuNhapBQ_DauNguoi=("ThuBQDauNguoi", "mean")
-    ).reset_index()
+    form_ver = st.session_state.form_ver 
+    danh_muc = tai_danh_muc_san_pham()
+    section_index = st.session_state.get('active_section_index', 0)
 
-    st.write(f"#### Bảng tổng hợp theo {phan_to}")
-    hien_dataframe_an_toan(df_agg)
+    # ---- Render UI ----
+    with card_container("Phần A: Thông tin chung"):
+        st.info(f"Hộ số: {ho_so} | Chủ hộ: {ho['TenChuHo']} | Địa bàn: {ho['DiaBan']}, {ho['Xa']}")
+        st.number_input("Tổng số nhân khẩu thực tế thường trú", min_value=1, value=1, key=_key("A", ho_so, form_ver, "nhan_khau"))
+        thanh_vien = nhap_thanh_vien_ho(ho_so, form_ver)
+        st.session_state[_key("A", ho_so, form_ver, "thanh_vien")] = thanh_vien
+        if st.button("Lưu và tiếp tục sang Phần B", type="primary"):
+            st.session_state.active_section_index = 1
+            st.rerun()
+    
+    if section_index > 0:
+        st.header("Phần B: Thu nhập (Đơn vị: 1.000 đồng/năm)")
+        for i, muc in enumerate(PHIEU_THU_NHAP_CONFIG[1:], 1):
+            with st.expander(muc["ten"], expanded=(section_index == i)):
+                co_ko = st.radio(muc["cau_hoi"], ["1. Có", "2. Không"], index=1, horizontal=True, key=_key(muc["id"], ho_so, form_ver, "co_ko"))
+                if co_ko == "1. Có":
+                    if muc["loai"] == "luong": nhap_muc_1_luong(ho_so, form_ver, thanh_vien)
+                    elif muc["loai"] in ["nong_nghiep", "sxkd"]: nhap_muc_nong_nghiep_sxkd(muc, ho_so, form_ver, danh_muc)
+                    elif muc["loai"] == "khac": nhap_muc_7_khac(ho_so, form_ver)
+                
+                nav_cols = st.columns([1,1,1])
+                if i > 1 and nav_cols[0].button(f"⬅️ Quay lại", key=f"back_{i}"):
+                    st.session_state.active_section_index = i - 1; st.rerun()
+                if i < len(PHIEU_THU_NHAP_CONFIG) - 1 and nav_cols[2].button(f"Tiếp theo ➡️", key=f"next_{i}"):
+                    st.session_state.active_section_index = i + 1; st.rerun()
+                elif i == len(PHIEU_THU_NHAP_CONFIG) - 1 and nav_cols[2].button(f"➡️ Tới Phần C: Tổng hợp", key=f"next_{i}", type="primary"):
+                    st.session_state.active_section_index = -1; st.rerun()
 
-    fig = px.bar(
-        df_agg,
-        x=group_by_col,
-        y=["ThuNhapBQ_Ho", "ThuNhapBQ_DauNguoi"],
-        barmode="group",
-        labels={"value": "Thu nhập bình quân (1.000 đồng/năm)", "variable": "Chỉ tiêu"},
-        title=f"Biểu đồ so sánh thu nhập theo {phan_to}"
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    if section_index == -1:
+        st.header("Phần C: Tổng hợp & Gửi phiếu")
+        with card_container():
+            tong_hop = tong_hop_phieu(ho_so, form_ver)
+            st.dataframe(pd.DataFrame([{"Nguồn thu nhập": n, "Tổng (1.000đ/năm)": f"{tong_hop.get(k, 0):,.0f}"} for k, n in BAO_CAO_7_NGUON]), hide_index=True)
+            st.metric("TỔNG THU NHẬP CỦA HỘ (1.000đ/năm)", f"{tong_hop.get('TongThuNhap', 0):,.0f}")
+
+            ok, errors = kiem_tra_validation_phieu(ho_so, form_ver)
+            if not ok: [st.error(e) for e in errors]
+
+            if st.button("💾 Gửi kết quả", type="primary", use_container_width=True, disabled=not ok):
+                loc = streamlit_geolocation() if streamlit_geolocation else None
+                gps = phan_tich_vi_tri_gps(loc); geo = phan_tich_geofence(ho, loc)
+                row = tao_dong_ket_qua_qd1099(ma_dtv=ma_dtv, ho=ho, nhan_khau=st.session_state.get(_key("A", ho_so, form_ver, "nhan_khau"), 1), tong_hop=tong_hop, loc=loc, gps=gps, geo=geo, ghi_chu_vi_tri="")
+                if append_ket_qua(row):
+                    st.success("Gửi phiếu thành công!")
+                    st.session_state.form_ver += 1; st.session_state.active_section_index = 0; st.rerun()
 
 
 # ---------------------------------------------------------------------------
-# 13. MAIN ENTRY POINT (ĐIỀU HƯỚNG ROUTING)
+# 11. MAIN ENTRY POINT (ĐIỀU HƯỚNG ROUTING)
 # ---------------------------------------------------------------------------
 def main():
     if "user" not in st.session_state:
@@ -1532,55 +1178,40 @@ def main():
         return
         
     user = st.session_state["user"]
-    
-    # Khối tiêu đề ghim ở đỉnh trang (Sticky / Pin)
-    with st.container():
-        st.markdown('<div id="sticky-header"></div>', unsafe_allow_html=True)
-        hien_thi_banner()
-        
-        cols = st.columns([2, 4.5, 1.2])
-        with cols[0]:
-            st.markdown(f"""
-            <div class="user-badge-card">
-                <div class="avatar-circle">{user['ten'][:1].upper()}</div>
-                <div>
-                    <div class="user-title">{user['ten']}</div>
-                    <div class="user-role">Vai trò: {user['role'].upper()} | ID: {user['ma']}</div>
-                </div>
+
+    with st.sidebar:
+        st.markdown(f"""
+        <div class="user-badge-card">
+            <div class="avatar-circle">{user['ten'][:1].upper()}</div>
+            <div>
+                <div class="user-title">{user['ten']}</div>
+                <div class="user-role">{user['role'].upper()}: {user['ma']}</div>
             </div>
-            """, unsafe_allow_html=True)
-            
-        with cols[1]:
-            if user["role"] == "admin":
-                menu_options = ["Dashboard", "Cài đặt hệ thống", "Tiến độ điều tra", "Thống kê & Phân tích"]
-                st.session_state.admin_menu = st.radio("Menu Admin:", menu_options, horizontal=True, key="admin_menu_radio")
-            else:
-                st.markdown(f"""
-                <div class="surveyor-badge">
-                    <span class="status-dot">●</span> 
-                    <span style="font-weight:700;">CHẾ ĐỘ ĐIỀU TRA VIÊN</span>
-                </div>
-                """, unsafe_allow_html=True)
-                
-        with cols[2]:
-            if st.button("🚪 Đăng xuất", key="logout_btn", use_container_width=True, type="secondary"):
-                st.session_state.clear()
-                st.rerun()
-                
-    st.markdown('<div class="sticky-header-spacer"></div>', unsafe_allow_html=True)
-    
-    if user["role"] == "admin":
-        active_view = st.session_state.get("admin_menu", "Dashboard")
-        if active_view == "Dashboard":
-            render_admin_dashboard()
-        elif active_view == "Cài đặt hệ thống":
-            admin_he_thong()
-        elif active_view == "Tiến độ điều tra":
-            admin_tien_do()
+        </div>
+        """, unsafe_allow_html=True)
+
+        if user["role"] == "admin":
+            menu_options = {
+                "🏠 Dashboard": admin_dashboard,
+                "📈 Tiến độ": admin_tien_do,
+                "⚙️ Hệ thống": admin_he_thong,
+            }
         else:
-            admin_thong_ke_tong_hop()
-    else:
-        dtv_nhap_phieu()
+            menu_options = {
+                "📝 Nhập phiếu": dtv_nhap_phieu,
+            }
+        
+        selected_page = st.radio("Menu chính", menu_options.keys())
+
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        if st.button("🚪 Đăng xuất"):
+            st.session_state.clear()
+            st.rerun()
+
+    # Render the selected page
+    page_function = menu_options[selected_page]
+    page_function()
+
 
 if __name__ == "__main__":
     main()
