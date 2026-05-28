@@ -9,6 +9,7 @@ from __future__ import annotations
 import io
 import json
 import re
+import base64
 import unicodedata
 from contextlib import contextmanager
 from pathlib import Path
@@ -61,7 +62,6 @@ def apply_custom_style() -> None:
         }}
         
         /* Custom CSS to fix layout issues */
-        .block-container {{ padding-top: 1rem !important; }}
         #MainMenu {{visibility: hidden !important;}}
         footer {{visibility: hidden !important;}}
 
@@ -97,9 +97,11 @@ def apply_custom_style() -> None:
             padding: 0.5rem 0;
         }}
 
-        /* Main content container */
+        /* Default main content container */
         .main .block-container {{
-            padding-top: 1rem !important;
+            padding-top: 2rem !important;
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
             padding-bottom: 3rem !important;
             max-width: 95% !important;
             margin: 0 auto !important;
@@ -166,16 +168,21 @@ def apply_custom_style() -> None:
     )
 
 def hien_thi_banner() -> None:
-    """Hiển thị ảnh ngang ở đầu trang."""
+    """Hiển thị ảnh banner của ứng dụng (ảnh này đã chứa sẵn tiêu đề)."""
     import os
+
+    # CSS để xóa khoảng trắng phía trên, giúp banner nằm sát lề
+    st.markdown("<style>.main .block-container { padding-top: 0rem !important; }</style>", unsafe_allow_html=True)
+
     image_path = "image/panel.png"
-    fallback_url = "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=2000&h=300"
-    
     if os.path.exists(image_path):
         st.image(image_path, use_container_width=True)
+        # Thêm khoảng trống bên dưới banner để tách biệt với nội dung
+        st.markdown("<div style='margin-bottom: 2rem;'></div>", unsafe_allow_html=True)
     else:
-        st.image(fallback_url, use_container_width=True)
-    st.markdown("<h2 style='text-align: center; margin-top: -60px; color: white; text-shadow: 2px 2px 4px #000000;'>HỆ THỐNG ĐIỀU TRA THU NHẬP HỘ</h2>", unsafe_allow_html=True)
+        # Nếu không có ảnh, hiển thị tiêu đề dạng chữ và giữ lại khoảng trắng mặc định
+        st.markdown("<style>.main .block-container { padding-top: 2rem !important; }</style>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align: center; color: {NAVY_PRIMARY}; font-weight: 700;'>HỆ THỐNG ĐIỀU TRA THU NHẬP HỘ</h2>", unsafe_allow_html=True)
 
 @contextmanager
 def card_container(title: str | None = None):
@@ -1001,10 +1008,12 @@ def tao_dong_ket_qua_qd1099(
 # 10. GIAO DIỆN CÁC TRANG
 # ---------------------------------------------------------------------------
 def page_login():
-    """Giao diện trang đăng nhập."""
-    st.image("image/panel.png", use_container_width=True)
-    st.markdown("<h1 style='text-align: center;'>Hệ thống Điều tra Thu nhập Hộ</h1>", unsafe_allow_html=True)
-    
+    """Giao diện trang đăng nhập đã được đơn giản hóa."""
+    # Xóa khoảng trắng trên cùng cho trang đăng nhập
+    st.markdown("<style>.block-container { padding-top: 2rem !important; }</style>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='text-align: center; color: {NAVY_PRIMARY};'>HỆ THỐNG ĐIỀU TRA THU NHẬP HỘ</h1>", unsafe_allow_html=True)
+    st.markdown("<hr>", unsafe_allow_html=True)
+
     _, col2, _ = st.columns([1, 1.5, 1])
     with col2:
         with card_container("Đăng nhập"):
