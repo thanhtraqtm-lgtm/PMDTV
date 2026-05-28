@@ -1,0 +1,36 @@
+{
+  "muc2": [
+    "Cây lúa", "Ngô/bắp", "Khoai lang", "Sắn/khoai mỳ", "Cây lương thực khác", "Khoai tây", "Rau muống", "Su hào", "Bắp cải, súp lơ", "Rau cải các loại", "Đậu ăn quả tươi các loại", "Cà chua", "Cây gia vị", "Rau củ quả khác",
+    "Đậu tương/ đậu nành", "Lạc/ đậu phộng", "Vừng/ mè", "Mía", "Thuốc lá, thuốc lào", "Bông", "Đay, gai", "Cói", "Chè", "Cà phê", "Cao su", "Hồ tiêu", "Dừa", "Dâu tằm", "Điều/ đào lộn hột", "Cây CN lâu năm khác",
+    "Cam, chanh, quýt, bưởi", "Chuối", "Dứa", "Xoài, muỗm", "Táo", "Nho", "Mận", "Đu đủ", "Nhãn, vải, chôm chôm", "Hồng xiêm/Sa pô chê", "Na/ mãng cầu", "Mít, sầu riêng", "Măng cụt", "Cây ăn quả khác",
+    "Cây giống", "Sản phẩm phụ trồng trọt", "Dịch vụ trồng trọt"
+  ],
+  "muc3": [
+    "Thịt lợn hơi", "Thịt trâu, bò hơi", "Ngựa", "Dê, cừu", "Gia súc khác",
+    "Gà", "Vịt, ngan, ngỗng", "Gia cầm khác",
+    "Chó", "Thỏ", "Trăn", "Rắn", "Chăn nuôi khác",
+    "Trứng gia cầm", "Sữa tươi", "Kén tằm", "Mật ong", "Sản phẩm không qua giết mổ khác",
+    "Giống gia súc, gia cầm", "Sản phẩm phụ chăn nuôi", "Dịch vụ chăn nuôi"
+  ],
+  "muc4": [
+    "Trẩu, sở", "Quế", "Hồi", "Thông", "Cây cánh kiến", "Cây lấy gỗ", "Tre, luồng, nứa", "Cọ", "Dừa nước", "Cây lâm nghiệp khác", "Củi",
+    "Bảo vệ rừng", "Quản lý lâm nghiệp", "Dịch vụ lâm nghiệp khác"
+  ],
+  "muc5": [
+      "Nuôi trồng cá", "Nuôi trồng tôm", "Nuôi trồng thủy sản khác",
+      "Đánh bắt cá", "Đánh bắt tôm", "Đánh bắt thủy sản khác",
+      "Sản xuất giống cá", "Sản xuất giống tôm"
+  ],
+  "muc6": [
+    "Sản xuất, chế biến thực phẩm, đồ uống",
+    "Sản xuất hàng may mặc, da giày",
+    "Sản xuất đồ gỗ, nội thất",
+    "Sản xuất vật liệu xây dựng",
+    "Cơ khí, sửa chữa máy móc",
+    "Bán buôn, bán lẻ hàng hóa",
+    "Vận tải, kho bãi",
+    "Dịch vụ lưu trú, ăn uống",
+    "Dịch vụ làm đẹp, y tế",
+    "Xây dựng, sửa chữa nhà cửa"
+  ]
+}
