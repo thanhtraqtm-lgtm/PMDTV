@@ -60,6 +60,11 @@ def apply_custom_style() -> None:
             --navy-light: {NAVY_LIGHT};
         }}
         
+        /* Custom CSS to fix layout issues */
+        .block-container {{ padding-top: 1rem !important; }}
+        #MainMenu {{visibility: hidden !important;}}
+        footer {{visibility: hidden !important;}}
+
         /* Ẩn header mặc định của Streamlit */
         header[data-testid="stHeader"] {{
             display: none !important;
@@ -94,7 +99,7 @@ def apply_custom_style() -> None:
 
         /* Main content container */
         .main .block-container {{
-            padding-top: 1.5rem !important;
+            padding-top: 1rem !important;
             padding-bottom: 3rem !important;
             max-width: 95% !important;
             margin: 0 auto !important;
@@ -171,7 +176,6 @@ def hien_thi_banner() -> None:
     else:
         st.image(fallback_url, use_container_width=True)
     st.markdown("<h2 style='text-align: center; margin-top: -60px; color: white; text-shadow: 2px 2px 4px #000000;'>HỆ THỐNG ĐIỀU TRA THU NHẬP HỘ</h2>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
 
 @contextmanager
 def card_container(title: str | None = None):
@@ -290,7 +294,7 @@ NHAN_HIEN_THI = {
 
 # Ánh xạ tên cột linh hoạt từ các file Excel đầu vào
 ANH_XA_TEN_COT: dict[str, str] = {
-    "huyen": "Huyen", "tinh": "Huyen", "tinhthanh": "Huyen",
+    "huyen": "Huyen", "tinh": "Huyen", "tinhthanh": "Huyen", "matkcs": "MaTKCS",
     "xa": "Xa", "xaphuong": "Xa", "phuongxa": "Xa",
     "diaban": "DiaBan", "diahinh": "DiaBan",
     "hoso": "HoSo", "soho": "HoSo", "hosodemau": "HoSo", "mahodiem": "HoSo",
@@ -417,6 +421,8 @@ def doc_excel_danh_sach_ho(file, *, can_madtv: bool = False) -> tuple[pd.DataFra
             out_cols.append("DiaChi")
         if "MaDiaBan" in df.columns and "MaDiaBan" not in out_cols:
             out_cols.append("MaDiaBan")
+        if "MaTKCS" in df.columns and "MaTKCS" not in out_cols:
+             out_cols.append("MaTKCS")
             
         return df[out_cols].fillna(""), []
     except Exception as e:
@@ -1041,6 +1047,7 @@ def admin_dashboard():
     cols[2].metric("Thu nhập TB/Hộ", f"{avg_income:,.0f}")
     cols[3].metric("Tỷ lệ hoàn thành", f"{ratio}%")
 
+    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("### Phân tích nhanh")
     if completed > 0:
         col1, col2 = st.columns(2)
@@ -1080,55 +1087,110 @@ def admin_he_thong():
     with t2:
         df_ho = read_sheet(SHEETS["danh_sach_ho"])
         if not df_ho.empty:
-            dtv_codes = df_ho["MaDTV"].unique().tolist()
+            dtv_codes = [c for c in df_ho["MaDTV"].unique().tolist() if c]
             ma = st.selectbox("Chọn ĐTV để phân mẫu", dtv_codes)
-            nen = lay_danh_sach_nen(df_ho, ma)
-            
-            st.write(f"Điều tra viên '{ma}' đang quản lý **{len(nen)}** hộ.")
-            c1, c2 = st.columns(2)
-            k = c1.number_input("Bước nhảy (k)", min_value=1, max_value=100, value=2)
-            r = c2.number_input("Vị trí bắt đầu (r)", min_value=1, max_value=max(1, len(nen)), value=1)
-            
-            if st.button("Thực hiện chọn mẫu"):
-                chi_so = chon_chi_so_mau_tu_nen(len(nen), int(k), int(r), so_luong_can_chon=SO_HO_MAU)
-                if not chi_so:
-                    st.error("Số lượng hộ không đủ để chọn mẫu.")
-                else:
-                    df_da_phan = gan_phan_loai_ho(nen, chi_so)
-                    df_out = cap_nhat_danh_sach_ho_theo_dtv(df_ho, ma, df_da_phan)
-                    if write_sheet_replace(SHEETS["danh_sach_ho"], df_out):
-                        st.success(f"Đã chọn thành công {SO_HO_MAU} hộ mẫu cho ĐTV {ma}.")
-                        hien_dataframe_an_toan(df_da_phan)
+            if ma:
+                nen = lay_danh_sach_nen(df_ho, ma)
+                st.write(f"Điều tra viên '{ma}' đang quản lý **{len(nen)}** hộ.")
+                c1, c2 = st.columns(2)
+                k = c1.number_input("Bước nhảy (k)", min_value=1, max_value=100, value=2)
+                r = c2.number_input("Vị trí bắt đầu (r)", min_value=1, max_value=max(1, len(nen)), value=1)
+                
+                if st.button("Thực hiện chọn mẫu"):
+                    chi_so = chon_chi_so_mau_tu_nen(len(nen), int(k), int(r), so_luong_can_chon=SO_HO_MAU)
+                    if not chi_so:
+                        st.error("Số lượng hộ không đủ để chọn mẫu.")
+                    else:
+                        df_da_phan = gan_phan_loai_ho(nen, chi_so)
+                        df_out = cap_nhat_danh_sach_ho_theo_dtv(df_ho, ma, df_da_phan)
+                        if write_sheet_replace(SHEETS["danh_sach_ho"], df_out):
+                            st.success(f"Đã chọn thành công {SO_HO_MAU} hộ mẫu cho ĐTV {ma}.")
+                            hien_dataframe_an_toan(df_da_phan)
 
 def admin_tien_do():
-    """Trang thống kê tiến độ chi tiết."""
-    st.markdown("### 📈 Thống kê tiến độ điều tra chi tiết")
+    """Trang thống kê tiến độ và kết quả chi tiết."""
+    st.markdown("### 📈 Thống kê & Phân tích chi tiết")
+    
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 Tiến độ hoàn thành", "📋 Thông tin chi tiết hộ", "🏡 Tổng hợp theo xã", "🏢 Tổng hợp theo TKCS"])
+
     df_ho = read_sheet(SHEETS["danh_sach_ho"])
     df_kq = read_sheet(SHEETS["ket_qua"])
     
-    if df_ho.empty:
-        st.warning("Chưa có dữ liệu danh sách hộ."); return
-        
-    df_mau = ho_mau_can_dieu_tra(df_ho)
-    if df_mau.empty:
-        st.info("Chưa có hộ nào được chọn mẫu."); return
-        
-    t_dtv, t_xa = st.tabs(["👨‍💻 Theo Điều tra viên (ĐTV)", "🏡 Theo Xã"])
-    with t_dtv:
-        df_mau_dtv = df_mau.groupby("MaDTV").size().reset_index(name="Giao")
-        df_done_dtv = df_kq.groupby("MaDTV").size().reset_index(name="Hoàn thành") if not df_kq.empty else pd.DataFrame(columns=["MaDTV", "Hoàn thành"])
-        df_tien_do = pd.merge(df_mau_dtv, df_done_dtv, on="MaDTV", how="left").fillna(0)
-        df_tien_do["Còn lại"] = (df_tien_do["Giao"] - df_tien_do["Hoàn thành"]).clip(lower=0).astype(int)
-        df_tien_do["Tỷ lệ (%)"] = (df_tien_do["Hoàn thành"] / df_tien_do["Giao"] * 100).round(1)
-        st.dataframe(df_tien_do, use_container_width=True, hide_index=True)
-        
-    with t_xa:
-        df_mau_xa = df_mau.groupby("Xa").size().reset_index(name="Giao")
-        df_done_xa = df_kq.groupby("Xa").size().reset_index(name="Hoàn thành") if not df_kq.empty else pd.DataFrame(columns=["Xa", "Hoàn thành"])
-        df_tien_do_xa = pd.merge(df_mau_xa, df_done_xa, on="Xa", how="left").fillna(0)
-        df_tien_do_xa["Còn lại"] = (df_tien_do_xa["Giao"] - df_tien_do_xa["Hoàn thành"]).clip(lower=0).astype(int)
-        df_tien_do_xa["Tỷ lệ (%)"] = (df_tien_do_xa["Hoàn thành"] / df_tien_do_xa["Giao"] * 100).round(1)
-        st.dataframe(df_tien_do_xa, use_container_width=True, hide_index=True)
+    with tab1:
+        st.subheader("Tiến độ hoàn thành theo ĐTV và Xã")
+        if df_ho.empty:
+            st.warning("Chưa có dữ liệu danh sách hộ.")
+        else:
+            df_mau = ho_mau_can_dieu_tra(df_ho)
+            if df_mau.empty:
+                st.info("Chưa có hộ nào được chọn mẫu.")
+            else:
+                t_dtv, t_xa = st.tabs(["👨‍💻 Theo Điều tra viên (ĐTV)", "🏡 Theo Xã"])
+                with t_dtv:
+                    df_mau_dtv = df_mau.groupby("MaDTV").size().reset_index(name="Giao")
+                    df_done_dtv = df_kq.groupby("MaDTV").size().reset_index(name="Hoàn thành") if not df_kq.empty else pd.DataFrame(columns=["MaDTV", "Hoàn thành"])
+                    df_tien_do = pd.merge(df_mau_dtv, df_done_dtv, on="MaDTV", how="left").fillna(0)
+                    df_tien_do["Hoàn thành"] = df_tien_do["Hoàn thành"].astype(int)
+                    df_tien_do["Còn lại"] = (df_tien_do["Giao"] - df_tien_do["Hoàn thành"]).clip(lower=0).astype(int)
+                    df_tien_do["Tỷ lệ (%)"] = (df_tien_do["Hoàn thành"] / df_tien_do["Giao"] * 100).round(1)
+                    st.dataframe(df_tien_do, use_container_width=True, hide_index=True)
+                with t_xa:
+                    df_mau_xa = df_mau.groupby("Xa").size().reset_index(name="Giao")
+                    df_done_xa = df_kq.groupby("Xa").size().reset_index(name="Hoàn thành") if not df_kq.empty else pd.DataFrame(columns=["Xa", "Hoàn thành"])
+                    df_tien_do_xa = pd.merge(df_mau_xa, df_done_xa, on="Xa", how="left").fillna(0)
+                    df_tien_do_xa["Hoàn thành"] = df_tien_do_xa["Hoàn thành"].astype(int)
+                    df_tien_do_xa["Còn lại"] = (df_tien_do_xa["Giao"] - df_tien_do_xa["Hoàn thành"]).clip(lower=0).astype(int)
+                    df_tien_do_xa["Tỷ lệ (%)"] = (df_tien_do_xa["Hoàn thành"] / df_tien_do_xa["Giao"] * 100).round(1)
+                    st.dataframe(df_tien_do_xa, use_container_width=True, hide_index=True)
+
+    with tab2:
+        st.subheader("Bảng chi tiết kết quả điều tra")
+        if df_kq.empty:
+            st.info("Chưa có phiếu nào được ghi nhận.")
+        else:
+            col1, col2 = st.columns(2)
+            xa_filter = col1.multiselect("Lọc theo Xã", df_kq['Xa'].unique())
+            dtv_filter = col2.multiselect("Lọc theo ĐTV", df_kq['MaDTV'].unique())
+            
+            df_filtered = df_kq.copy()
+            if xa_filter:
+                df_filtered = df_filtered[df_filtered['Xa'].isin(xa_filter)]
+            if dtv_filter:
+                df_filtered = df_filtered[df_filtered['MaDTV'].isin(dtv_filter)]
+                
+            hien_dataframe_an_toan(df_filtered)
+
+    with tab3:
+        st.subheader("Tổng hợp thu nhập bình quân theo Xã")
+        if not df_kq.empty:
+            df_kq['TongThuNhap'] = pd.to_numeric(df_kq['TongThuNhap'], errors='coerce').fillna(0)
+            df_kq['ThuBQDauNguoi'] = pd.to_numeric(df_kq['ThuBQDauNguoi'], errors='coerce').fillna(0)
+            df_agg = df_kq.groupby("Xa").agg(
+                SoHo=("HoSo", "count"),
+                ThuNhapBQ_Ho=("TongThuNhap", "mean"),
+                ThuNhapBQ_DauNguoi=("ThuBQDauNguoi", "mean")
+            ).reset_index()
+            hien_dataframe_an_toan(df_agg)
+            fig = px.bar(df_agg, x="Xa", y=["ThuNhapBQ_Ho", "ThuNhapBQ_DauNguoi"], barmode="group", title="So sánh thu nhập bình quân theo Xã")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Chưa có dữ liệu để tổng hợp.")
+
+    with tab4:
+        st.subheader("Tổng hợp thu nhập bình quân theo Tỉnh/Huyện (TKCS)")
+        if not df_kq.empty:
+            df_kq['TongThuNhap'] = pd.to_numeric(df_kq['TongThuNhap'], errors='coerce').fillna(0)
+            df_kq['ThuBQDauNguoi'] = pd.to_numeric(df_kq['ThuBQDauNguoi'], errors='coerce').fillna(0)
+            df_agg = df_kq.groupby("MaTKCS").agg(
+                SoHo=("HoSo", "count"),
+                ThuNhapBQ_Ho=("TongThuNhap", "mean"),
+                ThuNhapBQ_DauNguoi=("ThuBQDauNguoi", "mean")
+            ).reset_index()
+            hien_dataframe_an_toan(df_agg)
+            fig = px.bar(df_agg, x="MaTKCS", y=["ThuNhapBQ_Ho", "ThuNhapBQ_DauNguoi"], barmode="group", title="So sánh thu nhập bình quân theo TKCS")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Chưa có dữ liệu để tổng hợp.")
 
 def dtv_nhap_phieu():
     """Trang nhập liệu cho Điều tra viên."""
@@ -1233,7 +1295,7 @@ def main():
         if user["role"] == "admin":
             menu_options = {
                 "🏠 Dashboard": admin_dashboard,
-                "📈 Tiến độ": admin_tien_do,
+                "📈 Tiến độ & Thống kê": admin_tien_do,
                 "⚙️ Hệ thống": admin_he_thong,
             }
         else:
