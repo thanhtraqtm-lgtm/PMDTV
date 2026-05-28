@@ -1025,7 +1025,7 @@ def page_login():
 def admin_dashboard():
     """Trang Dashboard chính của Admin."""
     hien_thi_banner()
-    df_kq = check_or_get_ket_qua()
+    df_kq = read_sheet(SHEETS["ket_qua"], silent=True)
     df_ho = read_sheet(SHEETS["danh_sach_ho"], silent=True)
 
     total_mau = len(ho_mau_can_dieu_tra(df_ho)) if not df_ho.empty else 0
@@ -1059,6 +1059,46 @@ def admin_dashboard():
             st.plotly_chart(fig_pie, use_container_width=True)
     else:
         st.info("Chưa có dữ liệu để hiển thị biểu đồ.")
+
+def admin_he_thong():
+    """Bảng điều khiển gán danh sách và chọn mốc mẫu r, k."""
+    st.markdown("### ⚙️ Cấu hình hệ thống và phân mẫu")
+    t1, t2 = st.tabs(["📤 Tải lên danh sách hộ", "🎯 Thực hiện chọn mẫu"])
+    
+    with t1:
+        f = st.file_uploader("Tải lên tệp Excel danh sách hộ", type=["xlsx", "xls"])
+        if f and st.button("Tải lên và cập nhật"):
+            df, thieu = doc_excel_danh_sach_ho(f, can_madtv=True)
+            if df is not None:
+                df[COL_PHAN_LOAI] = PHAN_LOAI_NEN
+                if write_sheet_replace(SHEETS["danh_sach_ho"], df):
+                    dong_bo_account_tu_ma_dtv(df["MaDTV"].unique().tolist())
+                    st.success("Tải lên thành công. Các tài khoản ĐTV đã được tạo hoặc cập nhật.")
+            else:
+                st.error(f"Tệp Excel thiếu các cột bắt buộc: {', '.join(thieu)}")
+                
+    with t2:
+        df_ho = read_sheet(SHEETS["danh_sach_ho"])
+        if not df_ho.empty:
+            dtv_codes = df_ho["MaDTV"].unique().tolist()
+            ma = st.selectbox("Chọn ĐTV để phân mẫu", dtv_codes)
+            nen = lay_danh_sach_nen(df_ho, ma)
+            
+            st.write(f"Điều tra viên '{ma}' đang quản lý **{len(nen)}** hộ.")
+            c1, c2 = st.columns(2)
+            k = c1.number_input("Bước nhảy (k)", min_value=1, max_value=100, value=2)
+            r = c2.number_input("Vị trí bắt đầu (r)", min_value=1, max_value=max(1, len(nen)), value=1)
+            
+            if st.button("Thực hiện chọn mẫu"):
+                chi_so = chon_chi_so_mau_tu_nen(len(nen), int(k), int(r), so_luong_can_chon=SO_HO_MAU)
+                if not chi_so:
+                    st.error("Số lượng hộ không đủ để chọn mẫu.")
+                else:
+                    df_da_phan = gan_phan_loai_ho(nen, chi_so)
+                    df_out = cap_nhat_danh_sach_ho_theo_dtv(df_ho, ma, df_da_phan)
+                    if write_sheet_replace(SHEETS["danh_sach_ho"], df_out):
+                        st.success(f"Đã chọn thành công {SO_HO_MAU} hộ mẫu cho ĐTV {ma}.")
+                        hien_dataframe_an_toan(df_da_phan)
 
 def admin_tien_do():
     """Trang thống kê tiến độ chi tiết."""
