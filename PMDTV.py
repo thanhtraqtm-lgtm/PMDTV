@@ -327,16 +327,20 @@ ANH_XA_TEN_COT: dict[str, str] = {
 @st.cache_data
 def tai_danh_muc_san_pham():
     """Đọc và cache danh mục sản phẩm từ file JSON."""
+    # Xác định thư mục chứa file PMDTV.py hiện tại
+    base_dir = Path(__file__).resolve().parent
+    # Tạo đường dẫn đầy đủ tới file json
+    file_path = base_dir / "danh_muc_san_pham.json"
+    
     try:
-        with open("danh_muc_san_pham.json", "r", encoding="utf-8") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
-        st.error("Lỗi: Không tìm thấy tệp 'danh_muc_san_pham.json'. Vui lòng tạo tệp này.")
+        st.error(f"Lỗi: Không tìm thấy tệp tại: {file_path}")
         return {}
     except json.JSONDecodeError:
         st.error("Lỗi: Tệp 'danh_muc_san_pham.json' có định dạng không hợp lệ.")
         return {}
-
 def _bo_dau_chuoi(s: str) -> str:
     """Loại bỏ dấu tiếng Việt, chuyển chữ thường, xóa khoảng trắng và gạch ngang."""
     s = str(s).strip().replace("Đ", "D").replace("đ", "d")
